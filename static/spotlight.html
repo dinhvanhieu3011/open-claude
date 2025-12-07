@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .spotlight-container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      gap: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      -webkit-app-region: drag;
+    }
+
+    .input-row input,
+    .input-row button {
+      -webkit-app-region: no-drag;
+    }
+
+    .input-row.no-border {
+      border-bottom: none;
+    }
+
+    .search-icon {
+      width: 20px;
+      height: 20px;
+      opacity: 0.4;
+    }
+
+    #spotlight-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      outline: none;
+      color: #1a1a1a;
+    }
+
+    #spotlight-input::placeholder {
+      color: rgba(0, 0, 0, 0.35);
+    }
+
+    .send-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: #cc785c;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .send-btn.visible {
+      opacity: 1;
+    }
+
+    .send-btn:hover {
+      background: #b86a50;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .messages-area {
+      display: none;
+      padding: 12px 16px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .messages-area.visible {
+      display: block;
+    }
+
+    .messages-area::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Message bubbles */
+    .message {
+      margin-bottom: 12px;
+    }
+
+    .message:last-child {
+      margin-bottom: 0;
+    }
+
+    .user-message {
+      background: rgba(204, 120, 92, 0.12);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      color: #1a1a1a;
+    }
+
+    .ai-message {
+      padding: 8px 0;
+    }
+
+    .ai-response {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1a1a1a;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .loading-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .loading-dots span {
+      width: 6px;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    /* Step items - matching main chat timeline UI */
+    .steps-container {
+      margin-bottom: 8px;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: row;
+      min-height: 34px;
+    }
+
+    .step-timeline-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-left: 4px;
+      width: 24px;
+      flex-shrink: 0;
+    }
+
+    .step-dot-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 34px;
+      justify-content: center;
+    }
+
+    .step-line-top {
+      width: 1px;
+      flex: 1;
+      background: rgba(0, 0, 0, 0.12);
+      min-height: 8px;
+    }
+
+    .step-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.12);
+      flex-shrink: 0;
+      margin: 4px 0;
+    }
+
+    .step-item.thinking .step-dot {
+      background: #CC785C;
+    }
+
+    .step-item.tool .step-dot {
+      background: #5856D6;
+    }
+
+    .step-line-bottom {
+      width: 1px;
+      flex: 1;
+      background: rgba(0, 0, 0, 0.12);
+      min-height: 8px;
+    }
+
+    .step-item:first-child .step-line-top {
+      background: transparent;
+    }
+
+    .step-item:last-child .step-line-bottom {
+      background: transparent;
+    }
+
+    .step-line-extend {
+      width: 1px;
+      flex: 1;
+      background: rgba(0, 0, 0, 0.12);
+      display: none;
+    }
+
+    .step-item.expanded .step-line-extend {
+      display: block;
+    }
+
+    .step-item:last-child .step-line-extend {
+      background: transparent;
+    }
+
+    .step-content-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px 6px 4px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .step-header:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .step-label {
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(0, 0, 0, 0.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      line-height: 1.4;
+    }
+
+    .step-spinner {
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid rgba(0, 0, 0, 0.12);
+      border-top-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .step-chevron {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      color: rgba(0, 0, 0, 0.35);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    .step-chevron svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .step-item.expanded .step-chevron {
+      transform: rotate(90deg);
+    }
+
+    .step-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.2s;
+      opacity: 0;
+    }
+
+    .step-item.expanded .step-content {
+      max-height: 200px;
+      overflow-y: auto;
+      opacity: 1;
+    }
+
+    .step-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .step-text {
+      padding: 8px 10px 12px 4px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(0, 0, 0, 0.5);
+      white-space: pre-wrap;
+      font-family: 'SF Mono', Menlo, monospace;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      .spotlight-container {
+        background: rgba(0, 0, 0, 0.05);
+        box-shadow:
+          0 25px 50px -12px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba(255, 255, 255, 0.1);
+      }
+
+      .input-row {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+      }
+
+      #spotlight-input {
+        color: #f0f0f0;
+      }
+
+      #spotlight-input::placeholder {
+        color: rgba(255, 255, 255, 0.35);
+      }
+
+      .search-icon {
+        filter: invert(1);
+      }
+
+      .user-message {
+        background: rgba(204, 120, 92, 0.2);
+        color: #f0f0f0;
+      }
+
+      .ai-response {
+        color: #e0e0e0;
+      }
+
+      .loading-dots span {
+        background: rgba(255, 255, 255, 0.4);
+      }
+
+      .step-line-top, .step-line-bottom, .step-line-extend {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .step-item:first-child .step-line-top,
+      .step-item:last-child .step-line-bottom,
+      .step-item:last-child .step-line-extend {
+        background: transparent;
+      }
+
+      .step-dot {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .step-header:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .step-label {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .step-chevron {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .step-text {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .step-spinner {
+        border-color: rgba(255, 255, 255, 0.15);
+        border-top-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="spotlight-container" id="container">
+    <div class="input-row" id="input-row">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input type="text" id="spotlight-input" placeholder="Ask anything..." autofocus>
+      <button class="send-btn" id="send-btn" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="messages-area" id="messages-area"></div>
+  </div>
+
+  <script>
+    const input = document.getElementById('spotlight-input');
+    const sendBtn = document.getElementById('send-btn');
+    const inputRow = document.getElementById('input-row');
+    const messagesArea = document.getElementById('messages-area');
+    const container = document.getElementById('container');
+
+    let isLoading = false;
+    let currentMessageEl = null;
+    let currentStepsContainer = null;
+    let currentResponseEl = null;
+    let stepIndex = 0;
+    let steps = [];
+
+    const chevronSvg = `<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M14.128 7.16482C14.3126 6.95983 14.6298 6.94336 14.835 7.12771C15.0402 7.31242 15.0567 7.62952 14.8721 7.83477L10.372 12.835L10.2939 12.9053C10.2093 12.9667 10.1063 13 9.99995 13C9.85833 12.9999 9.72264 12.9402 9.62788 12.835L5.12778 7.83477L5.0682 7.75273C4.95072 7.55225 4.98544 7.28926 5.16489 7.12771C5.34445 6.96617 5.60969 6.95939 5.79674 7.09744L5.87193 7.16482L9.99995 11.7519L14.128 7.16482Z"/></svg>`;
+
+    const toolLabels = {
+      'web_search': 'Searching the web',
+      'web_fetch': 'Fetching page',
+      'bash_tool': 'Running command',
+      'create_file': 'Creating file',
+      'str_replace': 'Editing file',
+      'view': 'Reading file',
+      'conversation_search': 'Searching past chats',
+      'recent_chats': 'Getting recent chats'
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function createStepItem(type, label, isActive = true) {
+      const div = document.createElement('div');
+      div.className = `step-item ${type}${isActive ? '' : ' done'}`;
+      div.dataset.index = stepIndex++;
+      div.innerHTML = `
+        <div class="step-timeline-col">
+          <div class="step-dot-row">
+            <div class="step-line-top"></div>
+            <div class="step-dot"></div>
+            <div class="step-line-bottom"></div>
+          </div>
+          <div class="step-line-extend"></div>
+        </div>
+        <div class="step-content-col">
+          <div class="step-header" onclick="this.parentElement.parentElement.classList.toggle('expanded')">
+            <span class="step-label">${escapeHtml(label)}</span>
+            ${isActive ? '<div class="step-spinner"></div>' : `<span class="step-chevron">${chevronSvg}</span>`}
+          </div>
+          <div class="step-content">
+            <div class="step-text"></div>
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    function updateStepContent(stepEl, text) {
+      const textEl = stepEl.querySelector('.step-text');
+      if (textEl) textEl.textContent = text;
+    }
+
+    function markStepComplete(stepEl, label) {
+      stepEl.classList.add('done');
+      stepEl.classList.remove('active');
+      const header = stepEl.querySelector('.step-header');
+      const spinner = stepEl.querySelector('.step-spinner');
+      if (spinner) {
+        spinner.outerHTML = `<span class="step-chevron">${chevronSvg}</span>`;
+      }
+      if (label) {
+        const labelEl = stepEl.querySelector('.step-label');
+        if (labelEl) labelEl.textContent = label;
+      }
+    }
+
+    // Show/hide send button based on input
+    input.addEventListener('input', () => {
+      const hasText = input.value.trim().length > 0;
+      sendBtn.classList.toggle('visible', hasText);
+      sendBtn.disabled = !hasText || isLoading;
+    });
+
+    // Handle Enter key
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && input.value.trim() && !isLoading) {
+        e.preventDefault();
+        sendMessage();
+      }
+      if (e.key === 'Escape') {
+        window.close();
+      }
+    });
+
+    sendBtn.addEventListener('click', () => {
+      if (input.value.trim() && !isLoading) {
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      isLoading = true;
+      sendBtn.disabled = true;
+      inputRow.classList.add('no-border');
+      messagesArea.classList.add('visible');
+
+      // Create user message
+      const userMsgEl = document.createElement('div');
+      userMsgEl.className = 'message';
+      userMsgEl.innerHTML = `<div class="user-message">${escapeHtml(message)}</div>`;
+      messagesArea.appendChild(userMsgEl);
+
+      // Create AI message container
+      currentMessageEl = document.createElement('div');
+      currentMessageEl.className = 'message ai-message';
+
+      currentStepsContainer = document.createElement('div');
+      currentStepsContainer.className = 'steps-container';
+
+      currentResponseEl = document.createElement('div');
+      currentResponseEl.className = 'ai-response';
+      currentResponseEl.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+      currentMessageEl.appendChild(currentStepsContainer);
+      currentMessageEl.appendChild(currentResponseEl);
+      messagesArea.appendChild(currentMessageEl);
+
+      // Reset step tracking for this message
+      stepIndex = 0;
+      steps = [];
+      let currentThinkingStep = null;
+      let currentToolStep = null;
+
+      updateWindowSize();
+
+      // Clear input
+      input.value = '';
+      sendBtn.classList.remove('visible');
+
+      // Set up stream listener
+      window.claude.onSpotlightStream((data) => {
+        currentResponseEl.textContent = data.fullText;
+        updateWindowSize();
+      });
+
+      window.claude.onSpotlightComplete((data) => {
+        currentResponseEl.textContent = data.fullText;
+        isLoading = false;
+        sendBtn.disabled = false;
+        updateWindowSize();
+      });
+
+      // Thinking listeners
+      window.claude.onSpotlightThinking((data) => {
+        if (data.isThinking) {
+          currentThinkingStep = createStepItem('thinking', 'Thinking...', true);
+          currentStepsContainer.appendChild(currentThinkingStep);
+          steps.push({ type: 'thinking', el: currentThinkingStep });
+          updateWindowSize();
+        } else if (currentThinkingStep) {
+          const summary = data.thinkingText ? data.thinkingText.substring(0, 50) + '...' : 'Thought';
+          markStepComplete(currentThinkingStep, summary);
+          if (data.thinkingText) {
+            updateStepContent(currentThinkingStep, data.thinkingText);
+          }
+          currentThinkingStep = null;
+          updateWindowSize();
+        }
+      });
+
+      window.claude.onSpotlightThinkingStream((data) => {
+        if (currentThinkingStep) {
+          updateStepContent(currentThinkingStep, data.thinking);
+          updateWindowSize();
+        }
+      });
+
+      // Tool listeners
+      window.claude.onSpotlightTool((data) => {
+        if (data.isRunning) {
+          const label = data.message || toolLabels[data.toolName] || `Using ${data.toolName}`;
+          currentToolStep = createStepItem('tool', label, true);
+          currentStepsContainer.appendChild(currentToolStep);
+          steps.push({ type: 'tool', el: currentToolStep, name: data.toolName });
+          updateWindowSize();
+        }
+      });
+
+      window.claude.onSpotlightToolResult((data) => {
+        if (currentToolStep) {
+          const label = toolLabels[data.toolName] || `Used ${data.toolName}`;
+          markStepComplete(currentToolStep, label);
+          if (data.result) {
+            const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2);
+            updateStepContent(currentToolStep, resultText.substring(0, 500));
+          }
+          if (data.isError) {
+            currentToolStep.classList.add('error');
+          }
+          currentToolStep = null;
+          updateWindowSize();
+        }
+      });
+
+      try {
+        await window.claude.spotlightSend(message);
+      } catch (err) {
+        currentResponseEl.textContent = 'Error: ' + (err.message || 'Failed to get response');
+        isLoading = false;
+        sendBtn.disabled = false;
+      }
+    }
+
+    function updateWindowSize() {
+      const containerHeight = container.offsetHeight;
+      const newHeight = Math.max(56, Math.min(containerHeight + 2, 700));
+      window.claude.spotlightResize(newHeight);
+      // Scroll to bottom of messages
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Focus input on load
+    window.addEventListener('load', () => {
+      input.focus();
+    });
+
+    // Clean up listeners and reset conversation when window closes
+    window.addEventListener('beforeunload', () => {
+      window.claude.removeSpotlightListeners();
+      window.claude.spotlightReset();
+    });
+  </script>
+</body>
+</html>
