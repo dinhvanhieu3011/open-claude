@@ -969,31 +969,32 @@
 
     .input-wrapper {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-end;
       background: rgba(255, 255, 255, 0.7);
       border: 1px solid rgba(0, 0, 0, 0.15);
       border-radius: 22px;
-      padding: 6px 6px 6px 16px;
+      padding: 6px 6px 6px 6px;
       transition: all 0.2s;
     }
 
     .attach-btn {
       width: 32px;
       height: 32px;
-      border-radius: 8px;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      background: rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      border: none;
+      background: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      color: rgba(0, 0, 0, 0.6);
+      color: rgba(0, 0, 0, 0.4);
       transition: all 0.15s;
+      flex-shrink: 0;
     }
 
-    .attach-btn:hover { background: rgba(0, 0, 0, 0.04); color: rgba(0, 0, 0, 0.85); }
-    .attach-btn:active { transform: scale(0.97); }
+    .attach-btn:hover { background: rgba(0, 0, 0, 0.06); color: rgba(0, 0, 0, 0.7); }
+    .attach-btn:active { transform: scale(0.95); }
 
     .attachment-container {
       display: none;
@@ -1784,11 +1785,9 @@
       .input-area textarea { color: #fff; }
       .input-area textarea::placeholder { color: rgba(255, 255, 255, 0.4); }
       .attach-btn {
-        border-color: rgba(255, 255, 255, 0.2);
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.75);
+        color: rgba(255, 255, 255, 0.5);
       }
-      .attach-btn:hover { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.95); }
+      .attach-btn:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
       .attachment-pill {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.12);
@@ -1940,7 +1939,11 @@
               <button class="model-option" data-model="claude-sonnet-4-5-20250929">Sonnet</button>
               <button class="model-option" data-model="claude-haiku-4-5-20251001">Haiku</button>
             </div>
-            <button class="home-attach-btn" id="home-attach-btn" title="Attach files">📎</button>
+            <button class="home-attach-btn" id="home-attach-btn" title="Attach files">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+              </svg>
+            </button>
             <button class="home-send-btn" id="home-send-btn">↑</button>
           </div>
           <div class="attachment-container" id="home-attachment-container">
@@ -1979,8 +1982,12 @@
     <!-- Input -->
     <div class="input-area">
       <div class="input-wrapper">
+        <button class="attach-btn" id="attach-btn" title="Attach files">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+          </svg>
+        </button>
         <textarea id="input" placeholder="Message Claude..." rows="1"></textarea>
-        <button class="attach-btn" id="attach-btn" title="Attach files">📎</button>
         <button class="send-btn" id="send-btn">↑</button>
         <button class="stop-btn" id="stop-btn">■</button>
       </div>
