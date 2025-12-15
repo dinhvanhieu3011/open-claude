@@ -2,6 +2,9 @@
 export interface SettingsSchema {
   spotlightKeybind: string;
   spotlightPersistHistory: boolean;
+  dictionary?: Record<string, string>;
+  llmCorrectionEnabled?: boolean;
+  llmCorrectionPrompt?: string;
 }
 
 // Store schema for electron-store

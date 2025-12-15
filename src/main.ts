@@ -1,4 +1,8 @@
-import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, clipboard, net } from 'electron';
+
+
+import { exec } from 'child_process';
+import { keyboard, Key } from '@nut-tree-fork/nut-js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -77,12 +81,17 @@ function createRecordingOverlay() {
     skipTaskbar: true,
     resizable: false,
     movable: false,
+    focusable: false, // Prevent checking stealing focus
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  // IMPORTANT: On Windows, focusable: false might prevent the window from showing up on top if not handled correctly,
+  // but usually alwaysOnTop covers it.
+  // We keep the window non-focusable to preserve the user's cursor position in their editor/input.
 
   recordingOverlay.setIgnoreMouseEvents(true);
   recordingOverlay.loadFile(path.join(__dirname, '../static/recording-overlay.html'));
@@ -571,25 +580,182 @@ ipcMain.handle('get-bearer-token', async () => {
   }
 });
 
+// Helper: Apply dictionary replacements
+function applyDictionary(text: string, dictionary?: Record<string, string>): string {
+  if (!dictionary || Object.keys(dictionary).length === 0) return text;
+  
+  // Create a regex pattern to match whole words from keys
+  // Sort keys by length (descending) to match longer phrases first
+  const keys = Object.keys(dictionary).sort((a, b) => b.length - a.length);
+  
+  let processedText = text;
+  
+  // Simple case-insensitive replacement for now
+  for (const key of keys) {
+    const value = dictionary[key];
+    const regex = new RegExp(`\\b${key}\\b`, 'gi');
+    processedText = processedText.replace(regex, value);
+  }
+  
+  return processedText;
+}
+
+// Helper: Apply LLM correction
+async function applyLLMCorrection(text: string, prompt?: string): Promise<string> {
+  const orgId = await getOrgId();
+  if (!orgId) return text;
+
+  try {
+    const defaultPrompt = 'Fix grammar, punctuation, and capitalization. Return only the corrected text without any explanation.';
+    const systemPrompt = prompt || defaultPrompt;
+    
+    // Create a temporary conversation
+    const createResult = await makeRequest(
+      `${BASE_URL}/api/organizations/${orgId}/chat_conversations`,
+      'POST',
+      { name: '', model: 'claude-haiku-4-5-20251001' } // Use Haiku for speed
+    );
+
+    if (createResult.status !== 201 && createResult.status !== 200) {
+      console.warn('[LLM Correction] Failed to create conversation');
+      return text;
+    }
+
+    const convData = createResult.data as { uuid: string };
+    const conversationId = convData.uuid;
+    
+    // Send message
+    const message = `${systemPrompt}\n\nInput text:\n${text}`;
+    
+    // We need to stream the response to get the text
+    const parserState = createStreamState();
+    const url = `${BASE_URL}/api/organizations/${orgId}/chat_conversations/${conversationId}/completion`;
+    
+    const response = await new Promise<string>((resolve, reject) => {
+        const request = net.request({
+            url,
+            method: 'POST',
+            useSessionCookies: true,
+        });
+        
+        // Add headers same as makeRequest... simple duplication for stream handling here or we could refactor makeRequest to support streaming better.
+        // For now, let's just make a non-streaming request if possible? 
+        // ChatGPT API usually requires streaming for completion.
+        // Let's rely on the parser we already have.
+        
+        request.setHeader('accept', 'text/event-stream');
+        request.setHeader('content-type', 'application/json');
+        request.setHeader('origin', BASE_URL);
+        request.setHeader('anthropic-client-platform', 'web_claude_ai');
+    
+        // Auth headers
+        request.setHeader('authorization', `Bearer ${store.get('bearerToken' as any)}`);
+        
+        request.on('response', (res: Electron.IncomingMessage) => {
+            res.on('data', (chunk: Buffer) => {
+               const lines = chunk.toString().split('\n');
+               for (const line of lines) {
+                   if (line.trim()) processSSEChunk(line, parserState, {});
+               }
+            });
+            
+            res.on('end', () => {
+                resolve(parserState.fullResponse);
+            });
+        });
+        
+        request.on('error', reject);
+        
+        request.write(JSON.stringify({
+            conversation_mode: { kind: "primary_assistant" },
+            force_parsimony: true,
+            history_and_training_disabled: false,
+            input_files: [],
+            model: "claude-haiku-4-5-20251001",
+            messages: [
+                {
+                    content: { content_type: "text", parts: [message] },
+                    id: crypto.randomUUID(),
+                    role: "user"
+                }
+            ],
+            parent_message_id: conversationId, // Usually same as conv ID for first message
+            timezone_offset_min: -420,
+            websocket_request_id: crypto.randomUUID()
+        }));
+        
+        request.end();
+    });
+
+    // Cleanup: Delete conversation
+    makeRequest(`${BASE_URL}/api/organizations/${orgId}/chat_conversations/${conversationId}`, 'DELETE').catch(console.error);
+    
+    return response || text;
+
+  } catch (e) {
+    console.error('[LLM Correction] Failed:', e);
+    return text;
+  }
+}
+
 // Global recording IPC handlers
 ipcMain.handle('global-recording-complete', async (_event, audioData: ArrayBuffer, fileName?: string) => {
   try {
     console.log('[Global Recording] Transcribing audio...');
     const buffer = Buffer.from(audioData);
     const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'auto');
+    let finalKey = result.text;
+
+    // 1. Dictionary Replacement
+    const settings = getSettings();
+    if (settings.dictionary) {
+        finalKey = applyDictionary(finalKey, settings.dictionary);
+        console.log('[Global Recording] Applied dictionary replacement');
+    }
+
+    // 2. LLM Correction
+    if (settings.llmCorrectionEnabled) {
+        console.log('[Global Recording] Applying LLM correction...');
+        const corrected = await applyLLMCorrection(finalKey, settings.llmCorrectionPrompt);
+        if (corrected && corrected !== finalKey) {
+             finalKey = corrected;
+             console.log('[Global Recording] LLM correction applied');
+        }
+    }
     
     // Paste to clipboard
-    clipboard.writeText(result.text);
-    console.log('[Global Recording] Transcription completed:', result.text);
-    console.log('[Global Recording] Text copied to clipboard');
+    clipboard.writeText(finalKey);
+    console.log('[Global Recording] Text copied to clipboard:', finalKey);
     
-    // Auto-paste using robotjs (simulate Ctrl+V)
-    setTimeout(() => {
+    // Auto-paste using nut.js (simulate Ctrl+V)
+    setTimeout(async () => {
       try {
         // Small delay to ensure clipboard is ready
+        const isMac = process.platform === 'darwin';
+        const modifier = isMac ? Key.LeftSuper : Key.LeftControl;
+        
+        await keyboard.pressKey(modifier, Key.V);
+        await keyboard.releaseKey(modifier, Key.V);
+        
         console.log('[Global Recording] Auto-pasted to active window');
       } catch (error) {
         console.error('[Global Recording] Auto-paste failed:', error);
+        // Fallback to system command if nut.js fails
+        try {
+           console.log('[Global Recording] nut.js failed, attempting system fallback...');
+           if (process.platform === 'darwin') {
+             exec(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`, (error) => {
+               if (error) console.error('[Global Recording] Mac paste fallback failed:', error);
+             });
+           } else if (process.platform === 'win32') {
+             const psCommand = "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^v')";
+             exec(`powershell -NoProfile -WindowStyle Hidden -Command "${psCommand}"`, (error) => {
+               if (error) console.error('[Global Recording] Windows paste fallback failed:', error);
+             });
+           }
+        } catch (fallbackError) {
+             console.error('[Global Recording] Fallback failed:', fallbackError);
+        }
       }
     }, 100);
     

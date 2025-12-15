@@ -5,12 +5,19 @@ const claude = (window as any).claude;
 interface Settings {
   spotlightKeybind: string;
   spotlightPersistHistory: boolean;
+  dictionary?: Record<string, string>;
+  llmCorrectionEnabled?: boolean;
+  llmCorrectionPrompt?: string;
 }
 
 // DOM Elements
 const keybindInput = document.getElementById('keybind-input') as HTMLElement;
 const keybindDisplay = document.getElementById('keybind-display') as HTMLElement;
 const persistHistoryCheckbox = document.getElementById('persist-history') as HTMLInputElement;
+const dictionaryInput = document.getElementById('dictionary-input') as HTMLTextAreaElement;
+const llmCorrectionToggle = document.getElementById('llm-correction-toggle') as HTMLInputElement;
+const llmPromptInput = document.getElementById('llm-prompt-input') as HTMLTextAreaElement;
+const llmPromptContainer = document.getElementById('llm-prompt-container') as HTMLElement;
 
 let isRecordingKeybind = false;
 let currentSettings: Settings | null = null;
@@ -99,6 +106,30 @@ function keyEventToAccelerator(e: KeyboardEvent): { accelerator: string; isCompl
   };
 }
 
+// Helper: Dictionary object to string
+function dictionaryToString(dict: Record<string, string> | undefined): string {
+  if (!dict) return '';
+  return Object.entries(dict)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+}
+
+// Helper: String to Dictionary object
+function stringToDictionary(str: string): Record<string, string> {
+  const dict: Record<string, string> = {};
+  str.split('\n').forEach(line => {
+    const parts = line.split('=');
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const value = parts.slice(1).join('=').trim();
+      if (key && value) {
+        dict[key] = value;
+      }
+    }
+  });
+  return dict;
+}
+
 // Load settings
 async function loadSettings() {
   currentSettings = await claude.getSettings();
@@ -106,6 +137,26 @@ async function loadSettings() {
   if (currentSettings) {
     keybindDisplay.textContent = formatKeybind(currentSettings.spotlightKeybind);
     persistHistoryCheckbox.checked = currentSettings.spotlightPersistHistory;
+    
+    // Load dictionary
+    dictionaryInput.value = dictionaryToString(currentSettings.dictionary);
+    
+    // Load LLM settings
+    llmCorrectionToggle.checked = !!currentSettings.llmCorrectionEnabled;
+    llmPromptInput.value = currentSettings.llmCorrectionPrompt || 'Fix grammar, punctuation, and capitalization. Return only the corrected text without any explanation.';
+    
+    // Update UI state
+    updateLLMUIState();
+  }
+}
+
+function updateLLMUIState() {
+  if (llmCorrectionToggle.checked) {
+    llmPromptContainer.style.opacity = '1';
+    llmPromptContainer.style.pointerEvents = 'auto';
+  } else {
+    llmPromptContainer.style.opacity = '0.5';
+    llmPromptContainer.style.pointerEvents = 'none';
   }
 }
 
@@ -120,8 +171,24 @@ async function saveKeybind(keybind: string) {
 // Save persist history
 async function savePersistHistory(value: boolean) {
   if (!currentSettings) return;
-
   currentSettings = await claude.saveSettings({ spotlightPersistHistory: value });
+}
+
+// Save transcription settings (debounced)
+let saveTimeout: any;
+function saveTranscriptionSettings() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    if (!currentSettings) return;
+    
+    const settings: Partial<Settings> = {
+      dictionary: stringToDictionary(dictionaryInput.value),
+      llmCorrectionEnabled: llmCorrectionToggle.checked,
+      llmCorrectionPrompt: llmPromptInput.value
+    };
+    
+    currentSettings = await claude.saveSettings(settings);
+  }, 500);
 }
 
 // Stop recording and save if we have a valid keybind
@@ -191,6 +258,14 @@ keybindInput.addEventListener('blur', () => {
 persistHistoryCheckbox.addEventListener('change', () => {
   savePersistHistory(persistHistoryCheckbox.checked);
 });
+
+// Transcription settings listeners
+dictionaryInput.addEventListener('input', saveTranscriptionSettings);
+llmCorrectionToggle.addEventListener('change', () => {
+  updateLLMUIState();
+  saveTranscriptionSettings();
+});
+llmPromptInput.addEventListener('input', saveTranscriptionSettings);
 
 // Load settings on page load
 window.addEventListener('load', loadSettings);

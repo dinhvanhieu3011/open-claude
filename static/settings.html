@@ -39,6 +39,38 @@
           </label>
         </div>
       </div>
+      
+      <!-- Transcription Section -->
+      <div class="settings-section">
+        <h2>Transcription</h2>
+
+        <div class="setting-item vertical">
+          <div class="setting-info">
+            <label>Dictionary Replacement</label>
+            <span class="setting-description">Replace words or expand abbreviations (format: key=value)</span>
+          </div>
+          <textarea id="dictionary-input" class="setting-textarea" placeholder="brb=be right back&#10;omg=oh my god" rows="5"></textarea>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>LLM Correction</label>
+            <span class="setting-description">Use Claude to clean up grammar and context</span>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="llm-correction-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item vertical" id="llm-prompt-container">
+          <div class="setting-info">
+            <label>Correction Prompt</label>
+            <span class="setting-description">Instructions for the LLM</span>
+          </div>
+          <textarea id="llm-prompt-input" class="setting-textarea" rows="3" placeholder="Fix grammar and punctuation. Keep it concise."></textarea>
+        </div>
+      </div>
 
       <!-- About Section -->
       <div class="settings-section">
