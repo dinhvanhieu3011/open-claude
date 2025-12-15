@@ -75,16 +75,77 @@
     const indicator = document.getElementById('indicator');
     const status = document.getElementById('status');
     
-    window.addEventListener('message', (event) => {
-      const { type } = event.data;
-      
-      if (type === 'transcribing') {
-        indicator.classList.add('transcribing');
-        status.textContent = 'Transcribing...';
-      } else if (type === 'completed') {
-        status.textContent = 'Done!';
-        setTimeout(() => window.close(), 500);
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    
+    // Start recording when window loads
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { 
+          mimeType: 'audio/webm;codecs=opus' 
+        });
+        
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = async () => {
+          try {
+            indicator.classList.add('transcribing');
+            status.textContent = 'Transcribing...';
+            
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            
+            // Send to main process for transcription
+            const result = await window.claude.invoke('global-recording-complete', arrayBuffer, 'audio.webm');
+            
+            status.textContent = 'Done!';
+            console.log('[Overlay] Transcription:', result.text);
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+          } catch (error) {
+            console.error('[Overlay] Error:', error);
+            status.textContent = 'Error!';
+            stream.getTracks().forEach(track => track.stop());
+          }
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        console.log('[Overlay] Recording started');
+      } catch (error) {
+        console.error('[Overlay] Failed to start recording:', error);
+        status.textContent = 'Error!';
       }
+    }
+    
+    function stopRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        console.log('[Overlay] Recording stopped');
+      }
+    }
+    
+    // Listen for IPC messages
+    if (window.claude && window.claude.receive) {
+      window.claude.receive('stop-recording', () => {
+        console.log('[Overlay] Received stop-recording command');
+        stopRecording();
+      });
+    }
+    
+    // Start recording when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => startRecording(), 100);
     });
   </script>
 </body>

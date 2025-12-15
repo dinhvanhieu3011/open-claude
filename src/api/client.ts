@@ -418,7 +418,7 @@ export async function getBearerToken(): Promise<string | null> {
 export async function transcribeAudio(
   audioData: Buffer | Uint8Array,
   fileName: string = 'audio.webm',
-  language: string = 'vi-VN'
+  language: string = 'auto'
 ): Promise<{ text: string }> {
   const token = await getBearerToken();
   if (!token) {
@@ -457,12 +457,12 @@ export async function transcribeAudio(
     });
 
     request.setHeader('accept', '*/*');
-    request.setHeader('accept-language', 'vi;q=0.9');
+    request.setHeader('accept-language', 'en-US,en;q=0.9,vi;q=0.8,zh-CN;q=0.7,zh;q=0.6');
     request.setHeader('authorization', `Bearer ${token}`);
     request.setHeader('content-type', `multipart/form-data; boundary=${boundary}`);
     request.setHeader('oai-client-version', 'prod-6b4285d9fac6acbe84a72f879ad3082e807495ed');
     request.setHeader('oai-device-id', getDeviceId());
-    request.setHeader('oai-language', language);
+    request.setHeader('oai-language', language === 'auto' ? 'en-US' : language);
     request.setHeader('origin', BASE_URL);
     request.setHeader('priority', 'u=1, i');
     request.setHeader('referer', `${BASE_URL}/`);

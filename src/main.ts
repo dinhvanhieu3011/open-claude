@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, c
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import robot from 'robotjs';
 import { isAuthenticated, getOrgId, makeRequest, streamCompletion, stopResponse, generateTitle, store, BASE_URL, prepareAttachmentPayload, transcribeAudio, getBearerToken } from './api/client';
 import { createStreamState, processSSEChunk, type StreamCallbacks } from './streaming/parser';
 import type { SettingsSchema, AttachmentPayload, UploadFilePayload } from './types';
@@ -47,9 +48,13 @@ function registerGlobalShortcuts() {
     });
   }
 
-  // Global voice recording shortcut (hold to record)
-  globalShortcut.register('CommandOrControl+Shift+R', () => {
-    startGlobalRecording();
+  // Global voice recording shortcut - Ctrl+K (press to start, press again to stop)
+  globalShortcut.register('CommandOrControl+K', () => {
+    if (isGlobalRecording) {
+      stopGlobalRecording();
+    } else {
+      startGlobalRecording();
+    }
   });
 }
 
@@ -86,8 +91,6 @@ function createRecordingOverlay() {
 
 // Global recording state
 let isGlobalRecording = false;
-let globalMediaStream: any = null;
-let globalAudioChunks: Buffer[] = [];
 
 async function startGlobalRecording() {
   if (isGlobalRecording) return;
@@ -95,25 +98,18 @@ async function startGlobalRecording() {
   isGlobalRecording = true;
   createRecordingOverlay();
   
-  // Simulate recording via IPC to renderer
-  if (recordingOverlay) {
-    recordingOverlay.webContents.send('recording-started');
-  }
+  console.log('[Global Recording] Started');
 }
 
 async function stopGlobalRecording() {
   if (!isGlobalRecording) return;
   
   isGlobalRecording = false;
+  console.log('[Global Recording] Stopping...');
   
-  if (recordingOverlay) {
-    recordingOverlay.webContents.send('recording-stopped');
-    setTimeout(() => {
-      if (recordingOverlay && !recordingOverlay.isDestroyed()) {
-        recordingOverlay.close();
-        recordingOverlay = null;
-      }
-    }, 500);
+  // Request overlay to finish recording and transcribe
+  if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+    recordingOverlay.webContents.send('stop-recording');
   }
 }
 
@@ -683,7 +679,7 @@ ipcMain.handle('generate-title', async (_event, conversationId: string, messageC
 ipcMain.handle('transcribe-audio', async (_event, audioData: ArrayBuffer, fileName?: string) => {
   try {
     const buffer = Buffer.from(audioData);
-    const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'vi-VN');
+    const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'auto');
     return result;
   } catch (error) {
     console.error('[Transcribe] Error:', error);
@@ -698,6 +694,50 @@ ipcMain.handle('get-bearer-token', async () => {
     return token;
   } catch (error) {
     console.error('[Bearer Token] Error:', error);
+    throw error;
+  }
+});
+
+// Global recording IPC handlers
+ipcMain.handle('global-recording-complete', async (_event, audioData: ArrayBuffer, fileName?: string) => {
+  try {
+    console.log('[Global Recording] Transcribing audio...');
+    const buffer = Buffer.from(audioData);
+    const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'auto');
+    
+    // Paste to clipboard
+    clipboard.writeText(result.text);
+    console.log('[Global Recording] Transcription completed:', result.text);
+    console.log('[Global Recording] Text copied to clipboard');
+    
+    // Auto-paste using robotjs (simulate Ctrl+V)
+    setTimeout(() => {
+      try {
+        // Small delay to ensure clipboard is ready
+        robot.keyTap('v', ['control']);
+        console.log('[Global Recording] Auto-pasted to active window');
+      } catch (error) {
+        console.error('[Global Recording] Auto-paste failed:', error);
+      }
+    }, 100);
+    
+    // Close overlay
+    if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+      setTimeout(() => {
+        if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+          recordingOverlay.close();
+          recordingOverlay = null;
+        }
+      }, 800);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[Global Recording] Error:', error);
+    if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+      recordingOverlay.close();
+      recordingOverlay = null;
+    }
     throw error;
   }
 });

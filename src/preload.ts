@@ -122,4 +122,10 @@ contextBridge.exposeInMainWorld('claude', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: { spotlightKeybind?: string; spotlightPersistHistory?: boolean }) =>
     ipcRenderer.invoke('save-settings', settings),
+
+  // Generic IPC methods for overlay and other windows
+  invoke: (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args),
+  receive: (channel: string, callback: (...args: unknown[]) => void) => {
+    ipcRenderer.on(channel, (_event, ...args) => callback(...args));
+  },
 });
