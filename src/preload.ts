@@ -4,20 +4,24 @@ contextBridge.exposeInMainWorld('claude', {
   getAuthStatus: () => ipcRenderer.invoke('get-auth-status'),
   login: () => ipcRenderer.invoke('login'),
   logout: () => ipcRenderer.invoke('logout'),
-  createConversation: (model?: string) => ipcRenderer.invoke('create-conversation', model),
-  getConversations: () => ipcRenderer.invoke('get-conversations'),
-  loadConversation: (convId: string) => ipcRenderer.invoke('load-conversation', convId),
-  deleteConversation: (convId: string) => ipcRenderer.invoke('delete-conversation', convId),
-  renameConversation: (convId: string, name: string) => ipcRenderer.invoke('rename-conversation', convId, name),
-  starConversation: (convId: string, isStarred: boolean) => ipcRenderer.invoke('star-conversation', convId, isStarred),
-  exportConversationMarkdown: (conversationData: { title: string; messages: Array<{ role: string; content: string; timestamp?: string }> }) =>
-    ipcRenderer.invoke('export-conversation-markdown', conversationData),
-  generateTitle: (convId: string, messageContent: string, recentTitles?: string[]) => ipcRenderer.invoke('generate-title', convId, messageContent, recentTitles || []),
-  sendMessage: (conversationId: string, message: string, parentMessageUuid: string, attachments?: unknown[]) =>
-    ipcRenderer.invoke('send-message', conversationId, message, parentMessageUuid, attachments || []),
-  uploadAttachments: (files: Array<{ name: string; size: number; type: string; data: ArrayBuffer | Uint8Array | number[] }>) =>
-    ipcRenderer.invoke('upload-attachments', files),
-  stopResponse: (conversationId: string) => ipcRenderer.invoke('stop-response', conversationId),
+  //createConversation: (model?: string) => ipcRenderer.invoke('create-conversation', model),
+  //getConversations: () => ipcRenderer.invoke('get-conversations'),
+  //loadConversation: (convId: string) => ipcRenderer.invoke('load-conversation', convId),
+  //deleteConversation: (convId: string) => ipcRenderer.invoke('delete-conversation', convId),
+  //renameConversation: (convId: string, name: string) => ipcRenderer.invoke('rename-conversation', convId, name),
+  //starConversation: (convId: string, isStarred: boolean) => ipcRenderer.invoke('star-conversation', convId, isStarred),
+  // exportConversationMarkdown: (conversationData: { title: string; messages: Array<{ role: string; content: string; timestamp?: string }> }) =>
+  //   ipcRenderer.invoke('export-conversation-markdown', conversationData),
+  // generateTitle: (convId: string, messageContent: string, recentTitles?: string[]) => ipcRenderer.invoke('generate-title', convId, messageContent, recentTitles || []),
+  // sendMessage: (conversationId: string, message: string, parentMessageUuid: string, attachments?: unknown[]) =>
+  //   ipcRenderer.invoke('send-message', conversationId, message, parentMessageUuid, attachments || []),
+  // uploadAttachments: (files: Array<{ name: string; size: number; type: string; data: ArrayBuffer | Uint8Array | number[] }>) =>
+  //   ipcRenderer.invoke('upload-attachments', files),
+  // stopResponse: (conversationId: string) => ipcRenderer.invoke('stop-response', conversationId),
+
+  // Audio transcription
+  transcribeAudio: (audioData: ArrayBuffer, fileName?: string) => ipcRenderer.invoke('transcribe-audio', audioData, fileName),
+  getBearerToken: () => ipcRenderer.invoke('get-bearer-token'),
 
   // Stream listeners
   onMessageStream: (callback: (data: { conversationId: string; text: string; fullText: string }) => void) => {

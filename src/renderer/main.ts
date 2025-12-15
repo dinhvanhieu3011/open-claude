@@ -18,6 +18,7 @@ declare global {
       stopResponse: (convId: string) => Promise<void>;
       generateTitle: (convId: string, messageContent: string) => Promise<void>;
       uploadAttachments: (files: Array<{ name: string; size: number; type: string; data: ArrayBuffer | Uint8Array | number[] }>) => Promise<UploadedAttachmentPayload[]>;
+      transcribeAudio: (audioData: ArrayBuffer, fileName?: string) => Promise<{ text: string }>;
       openSettings: () => Promise<void>;
       getSettings: () => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
       saveSettings: (settings: { spotlightKeybind?: string; spotlightPersistHistory?: boolean }) => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
@@ -1797,6 +1798,127 @@ function setupEventListeners() {
   sidebarTab?.addEventListener('mouseleave', () => {
     clearTimeout(hoverTimeout);
   });
+
+  // Record audio button
+  const recordBtn = $('record-btn');
+  recordBtn?.addEventListener('click', toggleRecording);
+}
+
+// Audio recording state
+let mediaRecorder: MediaRecorder | null = null;
+let audioChunks: Blob[] = [];
+let isRecording = false;
+
+// Toggle audio recording
+async function toggleRecording() {
+  const recordBtn = $('record-btn');
+  const chatInputEl = $('input') as HTMLTextAreaElement;
+  const homeInputEl = $('home-input') as HTMLTextAreaElement;
+  
+  // Determine which input to use based on which view is visible
+  const homeContainer = document.getElementById('home');
+  const chatContainer = document.getElementById('chat');
+  const isHomeView = homeContainer && getComputedStyle(homeContainer).display !== 'none';
+  const inputEl = isHomeView ? homeInputEl : chatInputEl;
+  
+  if (!isRecording) {
+    // Start recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      audioChunks = [];
+      
+      mediaRecorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      });
+      
+      mediaRecorder.addEventListener('stop', async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Create blob from chunks
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        
+        // Convert to ArrayBuffer
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        
+        // Show loading state
+        if (inputEl) {
+          inputEl.placeholder = 'Transcribing...';
+          inputEl.disabled = true;
+        }
+        
+        try {
+          // Call transcribe API
+          const result = await window.claude.transcribeAudio(arrayBuffer, 'audio.webm');
+          
+          console.log('Transcription result:', result);
+          
+          // Insert transcribed text into input - always add new line if there's existing text
+          if (result && result.text) {
+            if (inputEl) {
+              const currentText = inputEl.value.trim();
+              if (currentText) {
+                // Add new line before appending
+                inputEl.value = currentText + '\n' + result.text;
+              } else {
+                inputEl.value = result.text;
+              }
+              
+              // Auto resize based on which input is being used
+              if (isHomeView && homeInputEl) {
+                autoResizeHome(homeInputEl);
+              } else if (chatInputEl) {
+                autoResize(chatInputEl);
+              }
+              
+              inputEl.focus();
+            }
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+          alert('Failed to transcribe audio: ' + (error instanceof Error ? error.message : String(error)));
+        } finally {
+          // Reset state
+          if (inputEl) {
+            inputEl.placeholder = 'Message Claude...';
+            inputEl.disabled = false;
+          }
+        }
+      });
+      
+      mediaRecorder.start();
+      isRecording = true;
+      
+      // Update UI
+      if (recordBtn) {
+        recordBtn.classList.add('recording');
+        recordBtn.title = 'Stop recording';
+      }
+      
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  } else {
+    // Stop recording
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    
+    isRecording = false;
+    
+    // Update UI
+    if (recordBtn) {
+      recordBtn.classList.remove('recording');
+      recordBtn.title = 'Record audio';
+    }
+  }
 }
 
 // Start the app

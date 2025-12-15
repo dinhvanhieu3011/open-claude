@@ -1,14 +1,15 @@
-import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, clipboard } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { isAuthenticated, getOrgId, makeRequest, streamCompletion, stopResponse, generateTitle, store, BASE_URL, prepareAttachmentPayload } from './api/client';
+import { isAuthenticated, getOrgId, makeRequest, streamCompletion, stopResponse, generateTitle, store, BASE_URL, prepareAttachmentPayload, transcribeAudio, getBearerToken } from './api/client';
 import { createStreamState, processSSEChunk, type StreamCallbacks } from './streaming/parser';
 import type { SettingsSchema, AttachmentPayload, UploadFilePayload } from './types';
 
 let mainWindow: BrowserWindow | null = null;
 let spotlightWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
+let recordingOverlay: BrowserWindow | null = null;
 
 // Default settings
 const DEFAULT_SETTINGS: SettingsSchema = {
@@ -28,22 +29,91 @@ function saveSettings(settings: Partial<SettingsSchema>) {
   store.set('settings', { ...current, ...settings });
 }
 
-// Register spotlight shortcut
-function registerSpotlightShortcut() {
+// Register global shortcuts
+function registerGlobalShortcuts() {
   globalShortcut.unregisterAll();
   const settings = getSettings();
   const keybind = settings.spotlightKeybind || DEFAULT_SETTINGS.spotlightKeybind;
 
+  // Spotlight shortcut
   try {
     globalShortcut.register(keybind, () => {
       createSpotlightWindow();
     });
   } catch (e) {
-    // Fallback to default if custom keybind fails
     console.error('Failed to register keybind:', keybind, e);
     globalShortcut.register(DEFAULT_SETTINGS.spotlightKeybind, () => {
       createSpotlightWindow();
     });
+  }
+
+  // Global voice recording shortcut (hold to record)
+  globalShortcut.register('CommandOrControl+Shift+R', () => {
+    startGlobalRecording();
+  });
+}
+
+// Create recording overlay
+function createRecordingOverlay() {
+  if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+    return;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
+  recordingOverlay = new BrowserWindow({
+    width: 200,
+    height: 80,
+    x: Math.round((width - 200) / 2),
+    y: Math.round(height - 150),
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  recordingOverlay.setIgnoreMouseEvents(true);
+  recordingOverlay.loadFile(path.join(__dirname, '../static/recording-overlay.html'));
+}
+
+// Global recording state
+let isGlobalRecording = false;
+let globalMediaStream: any = null;
+let globalAudioChunks: Buffer[] = [];
+
+async function startGlobalRecording() {
+  if (isGlobalRecording) return;
+  
+  isGlobalRecording = true;
+  createRecordingOverlay();
+  
+  // Simulate recording via IPC to renderer
+  if (recordingOverlay) {
+    recordingOverlay.webContents.send('recording-started');
+  }
+}
+
+async function stopGlobalRecording() {
+  if (!isGlobalRecording) return;
+  
+  isGlobalRecording = false;
+  
+  if (recordingOverlay) {
+    recordingOverlay.webContents.send('recording-stopped');
+    setTimeout(() => {
+      if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+        recordingOverlay.close();
+        recordingOverlay = null;
+      }
+    }, 500);
   }
 }
 
@@ -290,20 +360,21 @@ ipcMain.handle('login', async () => {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    title: 'Sign in to Claude',
+    title: 'Sign in to ChatGPT',
   });
 
-  authWindow.loadURL(`${BASE_URL}/login`);
+  authWindow.loadURL(`${BASE_URL}/auth/login`);
 
   const checkCookies = async (): Promise<{ success: boolean; error?: string } | null> => {
-    const cookies = await session.defaultSession.cookies.get({ domain: '.claude.ai' });
-    const sessionKey = cookies.find(c => c.name === 'sessionKey')?.value;
-    const orgId = cookies.find(c => c.name === 'lastActiveOrg')?.value;
+    const cookies = await session.defaultSession.cookies.get({ domain: '.chatgpt.com' });
+    const sessionToken = cookies.find(c => c.name === '__Secure-next-auth.session-token')?.value;
 
-    if (sessionKey && orgId) {
-      console.log('[Auth] Got cookies from webview!');
+    if (sessionToken) {
+      console.log('[Auth] Got session token from ChatGPT!');
+      console.log('[Auth] Session Token:', sessionToken.substring(0, 50) + '...');
       authWindow.close();
-      store.set('orgId', orgId);
+      // Clear cached bearer token so it will be refreshed
+      store.delete('bearerToken' as any);
       return { success: true };
     }
     return null;
@@ -608,6 +679,29 @@ ipcMain.handle('generate-title', async (_event, conversationId: string, messageC
   return result;
 });
 
+// Audio transcription IPC handler
+ipcMain.handle('transcribe-audio', async (_event, audioData: ArrayBuffer, fileName?: string) => {
+  try {
+    const buffer = Buffer.from(audioData);
+    const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'vi-VN');
+    return result;
+  } catch (error) {
+    console.error('[Transcribe] Error:', error);
+    throw error;
+  }
+});
+
+// Get bearer token IPC handler
+ipcMain.handle('get-bearer-token', async () => {
+  try {
+    const token = await getBearerToken();
+    return token;
+  } catch (error) {
+    console.error('[Bearer Token] Error:', error);
+    throw error;
+  }
+});
+
 // Settings IPC handlers
 ipcMain.handle('open-settings', async () => {
   createSettingsWindow();
@@ -621,7 +715,7 @@ ipcMain.handle('save-settings', async (_event, settings: Partial<SettingsSchema>
   saveSettings(settings);
   // Re-register shortcut if keybind changed
   if (settings.spotlightKeybind !== undefined) {
-    registerSpotlightShortcut();
+    registerGlobalShortcuts();
   }
   return getSettings();
 });
@@ -642,8 +736,8 @@ if (!gotTheLock) {
 app.whenReady().then(() => {
   createMainWindow();
 
-  // Register spotlight shortcut from settings
-  registerSpotlightShortcut();
+  // Register global shortcuts
+  registerGlobalShortcuts();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
