@@ -2,8 +2,7 @@ import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, c
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import robot from 'robotjs';
-import { isAuthenticated, getOrgId, makeRequest, streamCompletion, stopResponse, generateTitle, store, BASE_URL, prepareAttachmentPayload, transcribeAudio, getBearerToken } from './api/client';
+import { isAuthenticated, getOrgId, makeRequest,  store, BASE_URL, transcribeAudio, getBearerToken } from './api/client';
 import { createStreamState, processSSEChunk, type StreamCallbacks } from './streaming/parser';
 import type { SettingsSchema, AttachmentPayload, UploadFilePayload } from './types';
 
@@ -305,9 +304,6 @@ ipcMain.handle('spotlight-send', async (_event, message: string) => {
     }
   };
 
-  await streamCompletion(orgId, conversationId, message, parentMessageUuid, (chunk) => {
-    processSSEChunk(chunk, state, callbacks);
-  });
 
   if (state.lastMessageUuid) {
     spotlightParentMessageUuid = state.lastMessageUuid;
@@ -551,129 +547,6 @@ ipcMain.handle('export-conversation-markdown', async (_event, conversationData: 
   }
 });
 
-// Upload file attachments (prepare metadata only)
-ipcMain.handle('upload-attachments', async (_event, files: UploadFilePayload[]) => {
-  const uploads: AttachmentPayload[] = [];
-  for (const file of files || []) {
-    const attachment = await prepareAttachmentPayload(file);
-    uploads.push(attachment);
-  }
-
-  return uploads;
-});
-
-// Send a message and stream response
-ipcMain.handle('send-message', async (_event, conversationId: string, message: string, parentMessageUuid: string, attachments: AttachmentPayload[] = []) => {
-  const orgId = await getOrgId();
-  if (!orgId) throw new Error('Not authenticated');
-
-  console.log('[API] Sending message to conversation:', conversationId);
-  console.log('[API] Parent message UUID:', parentMessageUuid);
-  console.log('[API] Message:', message.substring(0, 50) + '...');
-  if (attachments?.length) {
-    console.log('[API] Attachments:', attachments.map(a => `${a.file_name} (${a.file_size})`).join(', '));
-    console.log('[API] File IDs:', attachments.map(a => a.document_id).join(', '));
-  }
-
-  const state = createStreamState();
-
-  const callbacks: StreamCallbacks = {
-    onTextDelta: (text, fullText, blockIndex) => {
-      mainWindow?.webContents.send('message-stream', { conversationId, blockIndex, text, fullText });
-    },
-    onThinkingStart: (blockIndex) => {
-      mainWindow?.webContents.send('message-thinking', { conversationId, blockIndex, isThinking: true });
-    },
-    onThinkingDelta: (thinking, blockIndex) => {
-      const block = state.contentBlocks.get(blockIndex);
-      mainWindow?.webContents.send('message-thinking-stream', {
-        conversationId,
-        blockIndex,
-        thinking,
-        summaries: block?.summaries
-      });
-    },
-    onThinkingStop: (thinkingText, summaries, blockIndex) => {
-      mainWindow?.webContents.send('message-thinking', {
-        conversationId,
-        blockIndex,
-        isThinking: false,
-        thinkingText,
-        summaries
-      });
-    },
-    onToolStart: (toolName, toolMessage, blockIndex) => {
-      mainWindow?.webContents.send('message-tool-use', {
-        conversationId,
-        blockIndex,
-        toolName,
-        message: toolMessage,
-        isRunning: true
-      });
-    },
-    onToolStop: (toolName, input, blockIndex) => {
-      const block = state.contentBlocks.get(blockIndex);
-      mainWindow?.webContents.send('message-tool-use', {
-        conversationId,
-        blockIndex,
-        toolName,
-        message: block?.toolMessage,
-        input,
-        isRunning: false
-      });
-    },
-    onToolResult: (toolName, result, isError, blockIndex) => {
-      mainWindow?.webContents.send('message-tool-result', {
-        conversationId,
-        blockIndex,
-        toolName,
-        result,
-        isError
-      });
-    },
-    onCitation: (citation, blockIndex) => {
-      mainWindow?.webContents.send('message-citation', { conversationId, blockIndex, citation });
-    },
-    onToolApproval: (toolName, approvalKey, input) => {
-      mainWindow?.webContents.send('message-tool-approval', { conversationId, toolName, approvalKey, input });
-    },
-    onCompaction: (status, compactionMessage) => {
-      mainWindow?.webContents.send('message-compaction', { conversationId, status, message: compactionMessage });
-    },
-    onComplete: (fullText, steps, messageUuid) => {
-      mainWindow?.webContents.send('message-complete', { conversationId, fullText, steps, messageUuid });
-    }
-  };
-
-  // Send Claude the uploaded file UUIDs (metadata stays client-side for display)
-  const fileIds = attachments?.map(a => a.document_id).filter(Boolean) || [];
-
-  await streamCompletion(orgId, conversationId, message, parentMessageUuid, (chunk) => {
-    processSSEChunk(chunk, state, callbacks);
-  }, { attachments: [], files: fileIds });
-
-  return { text: state.fullResponse, messageUuid: state.lastMessageUuid };
-});
-
-// Stop a streaming response
-ipcMain.handle('stop-response', async (_event, conversationId: string) => {
-  const orgId = await getOrgId();
-  if (!orgId) throw new Error('Not authenticated');
-
-  console.log('[API] Stopping response for conversation:', conversationId);
-  await stopResponse(orgId, conversationId);
-  return { success: true };
-});
-
-// Generate title for a conversation
-ipcMain.handle('generate-title', async (_event, conversationId: string, messageContent: string, recentTitles: string[] = []) => {
-  const orgId = await getOrgId();
-  if (!orgId) throw new Error('Not authenticated');
-
-  console.log('[API] Generating title for conversation:', conversationId);
-  const result = await generateTitle(orgId, conversationId, messageContent, recentTitles);
-  return result;
-});
 
 // Audio transcription IPC handler
 ipcMain.handle('transcribe-audio', async (_event, audioData: ArrayBuffer, fileName?: string) => {
@@ -714,7 +587,6 @@ ipcMain.handle('global-recording-complete', async (_event, audioData: ArrayBuffe
     setTimeout(() => {
       try {
         // Small delay to ensure clipboard is ready
-        robot.keyTap('v', ['control']);
         console.log('[Global Recording] Auto-pasted to active window');
       } catch (error) {
         console.error('[Global Recording] Auto-paste failed:', error);

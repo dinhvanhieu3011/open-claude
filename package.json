@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && pnpm run build:renderer",
-    "build:renderer": "esbuild src/renderer/main.ts --bundle --outfile=static/js/main.js --format=esm --platform=browser && esbuild src/renderer/spotlight.ts --bundle --outfile=static/js/spotlight.js --format=esm --platform=browser && esbuild src/renderer/settings.ts --bundle --outfile=static/js/settings.js --format=esm --platform=browser",
+    "build:renderer": "esbuild src/renderer/main.ts --bundle --outfile=static/js/main.js --format=esm --platform=browser && esbuild src/renderer/settings.ts --bundle --outfile=static/js/settings.js --format=esm --platform=browser",
     "start": "pnpm run build && electron .",
     "dev": "pnpm run build && electron .",
     "pack": "pnpm run build && electron-builder --dir",
