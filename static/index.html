@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data:;">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data:;">
   <title>Open Claude</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       background: transparent;
     }
@@ -23,7 +30,9 @@
     }
 
     @media (prefers-color-scheme: dark) {
-      body { color: #fff; }
+      body {
+        color: #fff;
+      }
     }
 
     /* Login */
@@ -53,6 +62,7 @@
       height: 96px;
       margin: 0 auto 24px;
     }
+
     .logo img {
       width: 100%;
       height: 100%;
@@ -90,9 +100,16 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 16px rgba(204, 120, 92, 0.4);
     }
-    .login-btn:active { transform: scale(0.98); }
 
-    .error { color: #FF453A; font-size: 11px; margin-top: 12px; }
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
+    .error {
+      color: #FF453A;
+      font-size: 11px;
+      margin-top: 12px;
+    }
 
     /* Home page */
     .home-container {
@@ -101,7 +118,10 @@
       height: 100vh;
       position: relative;
     }
-    .home-container.active { display: flex; }
+
+    .home-container.active {
+      display: flex;
+    }
 
     .home-content {
       flex: 1;
@@ -116,7 +136,8 @@
     .home-drag-region {
       position: absolute;
       top: 0;
-      left: 30px; /* Leave space for sidebar tab */
+      left: 260px;
+      /* Leave space for flow-sidebar */
       right: 0;
       height: 50px;
       -webkit-app-region: drag;
@@ -187,8 +208,13 @@
       transition: all 0.15s;
     }
 
-    .home-send-btn:hover { transform: scale(1.03); }
-    .home-send-btn:active { transform: scale(0.97); }
+    .home-send-btn:hover {
+      transform: scale(1.03);
+    }
+
+    .home-send-btn:active {
+      transform: scale(0.97);
+    }
 
     .home-attach-btn {
       width: 34px;
@@ -286,8 +312,13 @@
     }
 
     @keyframes homeContentFadeOut {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
     }
 
     @keyframes inputAreaMoveDown {
@@ -295,10 +326,12 @@
         transform: translateY(0);
         opacity: 1;
       }
+
       60% {
         transform: translateY(calc(50vh - 100px));
         opacity: 1;
       }
+
       100% {
         transform: translateY(calc(50vh - 80px));
         opacity: 0;
@@ -306,8 +339,13 @@
     }
 
     @keyframes footerFadeOut {
-      0% { opacity: 1; }
-      100% { opacity: 0; }
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
     }
 
     /* Chat container entrance animation */
@@ -318,8 +356,13 @@
     }
 
     @keyframes chatEnter {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
 
     /* First user message fly-in animation */
@@ -332,6 +375,7 @@
         opacity: 0;
         transform: translateY(100px) scale(0.95);
       }
+
       100% {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -348,6 +392,7 @@
         opacity: 0;
         transform: translateY(10px);
       }
+
       100% {
         opacity: 1;
         transform: translateY(0);
@@ -355,8 +400,16 @@
     }
 
     /* Chat container */
-    .chat-container { display: none; flex-direction: column; height: 100vh; position: relative; }
-    .chat-container.active { display: flex; }
+    .chat-container {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+    }
+
+    .chat-container.active {
+      display: flex;
+    }
 
     /* Header */
     .header {
@@ -598,8 +651,14 @@
       padding: 8px;
     }
 
-    .sidebar-content::-webkit-scrollbar { display: none; }
-    .sidebar-content { -ms-overflow-style: none; scrollbar-width: none; }
+    .sidebar-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .sidebar-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
 
     .conv-item {
       padding: 10px 12px;
@@ -778,16 +837,46 @@
       gap: 16px;
     }
 
-    .messages::-webkit-scrollbar { width: 6px; }
-    .messages::-webkit-scrollbar-track { background: transparent; }
-    .messages::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 3px; }
+    .messages::-webkit-scrollbar {
+      width: 6px;
+    }
 
-    .message { max-width: 78%; }
-    .message:not(.fly-in):not(.fade-in) { animation: msgIn 0.2s ease forwards; }
-    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
-    .message.user { align-self: flex-end; }
-    .message.assistant { align-self: flex-start; }
+    .messages::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+
+    .message {
+      max-width: 78%;
+    }
+
+    .message:not(.fly-in):not(.fade-in) {
+      animation: msgIn 0.2s ease forwards;
+    }
+
+    @keyframes msgIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      align-self: flex-end;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
 
     .message-content {
       padding: 12px 16px;
@@ -813,6 +902,7 @@
     .message.user {
       position: relative;
     }
+
     .message.user .edit-btn {
       position: absolute;
       bottom: 4px;
@@ -830,31 +920,38 @@
       transition: opacity 0.15s, transform 0.15s;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
+
     .message.user .edit-btn svg {
       width: 12px;
       height: 12px;
       color: #666;
     }
+
     .message.user:hover .edit-btn {
       opacity: 1;
     }
+
     .message.user .edit-btn:hover {
       transform: scale(1.1);
       background: #fff;
     }
+
     .message.user.editing .edit-btn {
       display: none;
     }
+
     .message.user.editing .message-content {
       background: transparent;
       padding: 0;
     }
+
     .message-edit-container {
       display: flex;
       flex-direction: column;
       gap: 8px;
       min-width: 200px;
     }
+
     .message-edit-textarea {
       background: rgba(255, 255, 255, 0.9);
       border: 1px solid rgba(204, 120, 92, 0.5);
@@ -868,16 +965,19 @@
       max-height: 200px;
       line-height: 1.5;
     }
+
     .message-edit-textarea:focus {
       outline: none;
       border-color: #CC785C;
       box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
     }
+
     .message-edit-actions {
       display: flex;
       gap: 6px;
       justify-content: flex-end;
     }
+
     .message-edit-actions button {
       width: 28px;
       height: 28px;
@@ -889,36 +989,73 @@
       justify-content: center;
       transition: transform 0.15s;
     }
+
     .message-edit-actions button:hover {
       transform: scale(1.1);
     }
+
     .message-edit-cancel {
       background: rgba(0, 0, 0, 0.08);
     }
+
     .message-edit-cancel svg {
       width: 14px;
       height: 14px;
       color: #666;
     }
+
     .message-edit-submit {
       background: linear-gradient(145deg, #CC785C 0%, #D4846A 100%);
       box-shadow: 0 2px 6px rgba(204, 120, 92, 0.3);
     }
+
     .message-edit-submit svg {
       width: 14px;
       height: 14px;
       color: white;
     }
 
-    .message-content p { margin: 0 0 6px 0; }
-    .message-content p:last-child { margin-bottom: 0; }
-    .message-content p:first-child { margin-top: 0; }
-    .message-content h1, .message-content h2, .message-content h3 { margin: 10px 0 4px; font-weight: 600; }
-    .message-content h1:first-child, .message-content h2:first-child, .message-content h3:first-child { margin-top: 0; }
-    .message-content h1 { font-size: 1.2em; }
-    .message-content h2 { font-size: 1.1em; }
-    .message-content h3 { font-size: 1.05em; }
-    .message-content strong { font-weight: 600; }
+    .message-content p {
+      margin: 0 0 6px 0;
+    }
+
+    .message-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-content p:first-child {
+      margin-top: 0;
+    }
+
+    .message-content h1,
+    .message-content h2,
+    .message-content h3 {
+      margin: 10px 0 4px;
+      font-weight: 600;
+    }
+
+    .message-content h1:first-child,
+    .message-content h2:first-child,
+    .message-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .message-content h1 {
+      font-size: 1.2em;
+    }
+
+    .message-content h2 {
+      font-size: 1.1em;
+    }
+
+    .message-content h3 {
+      font-size: 1.05em;
+    }
+
+    .message-content strong {
+      font-weight: 600;
+    }
+
     .message-content code {
       font-family: 'SF Mono', Menlo, monospace;
       font-size: 0.9em;
@@ -927,7 +1064,12 @@
       border-radius: 4px;
       color: #9a5d3a;
     }
-    .message.user .message-content code { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+    .message.user .message-content code {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
     .message-content pre {
       background: rgba(0, 0, 0, 0.05);
       border: 1px solid rgba(0, 0, 0, 0.1);
@@ -936,9 +1078,25 @@
       overflow-x: auto;
       margin: 8px 0;
     }
-    .message-content pre code { background: transparent; padding: 0; font-size: 12px; line-height: 1.5; color: #333; }
-    .message-content ul, .message-content ol { margin: 6px 0; padding-left: 20px; }
-    .message-content li { margin: 2px 0; }
+
+    .message-content pre code {
+      background: transparent;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #333;
+    }
+
+    .message-content ul,
+    .message-content ol {
+      margin: 6px 0;
+      padding-left: 20px;
+    }
+
+    .message-content li {
+      margin: 2px 0;
+    }
+
     .message-content blockquote {
       border-left: 3px solid #CC785C;
       margin: 8px 0;
@@ -946,8 +1104,16 @@
       background: rgba(204, 120, 92, 0.1);
       border-radius: 0 8px 8px 0;
     }
-    .message-content a { color: #9a5d3a; text-decoration: none; }
-    .message-content a:hover { text-decoration: underline; }
+
+    .message-content a {
+      color: #9a5d3a;
+      text-decoration: none;
+    }
+
+    .message-content a:hover {
+      text-decoration: underline;
+    }
+
     .message-content hr {
       border: none;
       border-top: 1px solid rgba(0, 0, 0, 0.12);
@@ -961,9 +1127,11 @@
       text-decoration-style: dotted;
       text-underline-offset: 2px;
     }
+
     .citation-link:hover {
       text-decoration-style: solid;
     }
+
     .citation-num {
       font-size: 10px;
       color: #CC785C;
@@ -972,6 +1140,7 @@
       margin-left: 1px;
       cursor: pointer;
     }
+
     .citation-num:hover {
       text-decoration: underline;
     }
@@ -1011,8 +1180,14 @@
       flex-shrink: 0;
     }
 
-    .attach-btn:hover { background: rgba(0, 0, 0, 0.06); color: rgba(0, 0, 0, 0.7); }
-    .attach-btn:active { transform: scale(0.95); }
+    .attach-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.7);
+    }
+
+    .attach-btn:active {
+      transform: scale(0.95);
+    }
 
     .record-btn {
       width: 32px;
@@ -1031,12 +1206,15 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
 
-    .record-btn:hover { 
-      background: rgba(0, 0, 0, 0.08); 
+    .record-btn:hover {
+      background: rgba(0, 0, 0, 0.08);
       color: rgba(0, 0, 0, 0.8);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     }
-    .record-btn:active { transform: scale(0.95); }
+
+    .record-btn:active {
+      transform: scale(0.95);
+    }
 
     .record-btn.recording {
       color: #fff;
@@ -1068,13 +1246,16 @@
     }
 
     @keyframes pulse {
-      0%, 100% { 
-        opacity: 1; 
+
+      0%,
+      100% {
+        opacity: 1;
         transform: scale(1);
         box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
       }
-      50% { 
-        opacity: 0.6; 
+
+      50% {
+        opacity: 0.6;
         transform: scale(1.3);
         box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
       }
@@ -1126,7 +1307,14 @@
       flex-shrink: 0;
     }
 
-    .attachment-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+    .attachment-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+      flex: 1;
+    }
+
     .attachment-name {
       font-size: 12px;
       font-weight: 500;
@@ -1135,7 +1323,11 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .attachment-size { font-size: 10px; color: rgba(0, 0, 0, 0.45); }
+
+    .attachment-size {
+      font-size: 10px;
+      color: rgba(0, 0, 0, 0.45);
+    }
 
     .attachment-remove {
       background: transparent;
@@ -1146,14 +1338,21 @@
       padding: 4px;
       border-radius: 6px;
     }
-    .attachment-remove:hover { background: rgba(0, 0, 0, 0.06); color: rgba(0, 0, 0, 0.7); }
+
+    .attachment-remove:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.7);
+    }
 
     .attachment-status {
       font-size: 12px;
       color: rgba(0, 0, 0, 0.55);
       padding-left: 2px;
     }
-    .attachment-status.error { color: #FF453A; }
+
+    .attachment-status.error {
+      color: #FF453A;
+    }
 
     .input-wrapper:focus-within {
       border-color: rgba(204, 120, 92, 0.5);
@@ -1175,8 +1374,13 @@
       line-height: 1.4;
     }
 
-    .input-area textarea::placeholder { color: rgba(0, 0, 0, 0.4); }
-    .input-area textarea:focus { outline: none; }
+    .input-area textarea::placeholder {
+      color: rgba(0, 0, 0, 0.4);
+    }
+
+    .input-area textarea:focus {
+      outline: none;
+    }
 
     .message-attachments {
       margin-top: 8px;
@@ -1205,12 +1409,20 @@
       border-radius: 6px;
       flex-shrink: 0;
     }
+
     .attachment-icon-svg {
       width: 16px;
       height: 16px;
       color: rgba(0, 0, 0, 0.5);
     }
-    .message-attachment-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+    .message-attachment-info {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
+
     .message-attachment-name {
       font-size: 13px;
       font-weight: 500;
@@ -1219,7 +1431,11 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .message-attachment-size { font-size: 11px; color: rgba(0, 0, 0, 0.45); }
+
+    .message-attachment-size {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.45);
+    }
 
     .send-btn {
       background: linear-gradient(145deg, #CC785C 0%, #D4846A 100%);
@@ -1238,9 +1454,18 @@
       box-shadow: 0 2px 6px rgba(204, 120, 92, 0.3);
     }
 
-    .send-btn:hover:not(:disabled) { transform: scale(1.05); }
-    .send-btn:active:not(:disabled) { transform: scale(0.95); }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn:hover:not(:disabled) {
+      transform: scale(1.05);
+    }
+
+    .send-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
 
     .stop-btn {
       display: none;
@@ -1259,12 +1484,32 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
-    .stop-btn:hover { background: rgba(120, 120, 128, 0.24); color: rgba(0, 0, 0, 0.8); }
-    .stop-btn:active { transform: scale(0.95); }
-    .stop-btn.visible { display: flex; align-items: center; justify-content: center; }
-    .send-btn.hidden { display: none; }
 
-    .loading-dots { display: flex; gap: 4px; padding: 4px 0; }
+    .stop-btn:hover {
+      background: rgba(120, 120, 128, 0.24);
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    .stop-btn:active {
+      transform: scale(0.95);
+    }
+
+    .stop-btn.visible {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .send-btn.hidden {
+      display: none;
+    }
+
+    .loading-dots {
+      display: flex;
+      gap: 4px;
+      padding: 4px 0;
+    }
+
     .loading-dots span {
       width: 6px;
       height: 6px;
@@ -1272,10 +1517,31 @@
       border-radius: 50%;
       animation: pulse 1.2s ease-in-out infinite;
     }
-    .loading-dots span:nth-child(1) { animation-delay: 0s; }
-    .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
-    .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes pulse { 0%, 80%, 100% { opacity: 0.35; } 40% { opacity: 1; } }
+
+    .loading-dots span:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.35;
+      }
+
+      40% {
+        opacity: 1;
+      }
+    }
 
     .streaming-cursor {
       display: inline-block;
@@ -1286,7 +1552,19 @@
       vertical-align: middle;
       animation: blink 1s step-end infinite;
     }
-    @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+    @keyframes blink {
+
+      0%,
+      50% {
+        opacity: 1;
+      }
+
+      51%,
+      100% {
+        opacity: 0;
+      }
+    }
 
     /* Thinking block */
     .thinking-block {
@@ -1336,7 +1614,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .thinking-content {
@@ -1702,8 +1982,13 @@
       font-family: 'SF Mono', Menlo, monospace;
     }
 
-    .file-op.success .file-op-icon { color: #34C759; }
-    .file-op.error .file-op-icon { color: #FF453A; }
+    .file-op.success .file-op-icon {
+      color: #34C759;
+    }
+
+    .file-op.error .file-op-icon {
+      color: #FF453A;
+    }
 
     /* File preview */
     .file-preview {
@@ -1772,8 +2057,16 @@
       color: rgba(0, 0, 0, 0.5);
     }
 
-    .empty-state p { font-size: 15px; font-weight: 500; color: rgba(0, 0, 0, 0.6); }
-    .empty-state .hint { font-size: 12px; color: rgba(0, 0, 0, 0.35); }
+    .empty-state p {
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .empty-state .hint {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.35);
+    }
 
     /* Dark mode */
     @media (prefers-color-scheme: dark) {
@@ -1781,38 +2074,52 @@
         background: rgba(255, 255, 255, 0.12);
         border-color: rgba(255, 255, 255, 0.2);
       }
-      .login-container .subtitle { color: rgba(255, 255, 255, 0.5); }
+
+      .login-container .subtitle {
+        color: rgba(255, 255, 255, 0.5);
+      }
 
       /* Home page dark mode */
       .home-input {
         color: #fff;
         border-bottom-color: rgba(255, 255, 255, 0.2);
       }
+
       .home-input:focus {
         border-bottom-color: #E8C4A0;
       }
+
       .home-input::placeholder {
         color: rgba(255, 255, 255, 0.35);
       }
+
       .model-option {
         border-color: rgba(255, 255, 255, 0.15);
         color: rgba(255, 255, 255, 0.5);
       }
+
       .model-option:hover {
         background: rgba(255, 255, 255, 0.08);
         color: rgba(255, 255, 255, 0.8);
       }
+
       .home-attach-btn {
         color: rgba(255, 255, 255, 0.5);
       }
+
       .home-attach-btn:hover {
         background: rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.8);
       }
-      .home-send-btn { box-shadow: 0 2px 8px rgba(204, 120, 92, 0.4); }
+
+      .home-send-btn {
+        box-shadow: 0 2px 8px rgba(204, 120, 92, 0.4);
+      }
+
       .home-signout {
         color: rgba(255, 255, 255, 0.4);
       }
+
       .home-signout:hover {
         background: rgba(255, 255, 255, 0.08);
         color: rgba(255, 255, 255, 0.7);
@@ -1821,17 +2128,24 @@
       .header {
         background: transparent;
       }
+
       .icon-btn {
         color: rgba(255, 255, 255, 0.5);
       }
+
       .icon-btn:hover {
         background: rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.8);
       }
-      .model-badge { color: rgba(255, 255, 255, 0.4); }
+
+      .model-badge {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
       .sign-out-btn {
         color: rgba(255, 255, 255, 0.4);
       }
+
       .sign-out-btn:hover {
         background: rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.8);
@@ -1841,218 +2155,1131 @@
         background: rgba(28, 28, 30, 0.97);
         border-right-color: rgba(255, 255, 255, 0.08);
       }
-      .sidebar-header { border-bottom-color: rgba(255, 255, 255, 0.06); }
-      .sidebar-title { color: rgba(255, 255, 255, 0.6); }
-      .settings-btn { color: rgba(255, 255, 255, 0.4); }
-      .settings-btn:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); }
+
+      .sidebar-header {
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+      }
+
+      .sidebar-title {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .settings-btn {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .settings-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.7);
+      }
+
       .sidebar-tab-indicator {
         background: rgba(255, 255, 255, 0.08);
       }
+
       .sidebar-tab:hover .sidebar-tab-indicator {
         background: rgba(255, 255, 255, 0.15);
       }
+
       .sidebar-tab-indicator::after {
         background: rgba(255, 255, 255, 0.35);
       }
-      .conv-item:hover { background: rgba(255, 255, 255, 0.08); }
-      .conv-item.active { background: rgba(204, 120, 92, 0.25); }
-      .conv-item-title { color: rgba(255, 255, 255, 0.85); }
-      .conv-item-date { color: rgba(255, 255, 255, 0.4); }
-      .conv-loading { color: rgba(255, 255, 255, 0.4); }
-      .conv-section-header { color: rgba(255, 255, 255, 0.4); }
+
+      .conv-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .conv-item.active {
+        background: rgba(204, 120, 92, 0.25);
+      }
+
+      .conv-item-title {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .conv-item-date {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .conv-loading {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .conv-section-header {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
       .conv-menu-btn {
         color: rgba(255, 255, 255, 0.4);
       }
+
       .conv-menu-btn:hover {
         background: rgba(255, 255, 255, 0.12);
         color: rgba(255, 255, 255, 0.8);
       }
+
       .conv-dropdown {
         background: rgba(40, 40, 42, 0.95);
         border-color: rgba(255, 255, 255, 0.15);
       }
+
       .conv-dropdown-item {
         color: rgba(255, 255, 255, 0.8);
       }
+
       .conv-dropdown-item:hover {
         background: rgba(255, 255, 255, 0.08);
       }
+
       .conv-dropdown-item.delete {
         color: #FF6B6B;
       }
+
       .conv-dropdown-item.delete:hover {
         background: rgba(255, 107, 107, 0.15);
       }
+
       .conv-rename-input {
         background: rgba(0, 0, 0, 0.3);
         border-color: rgba(204, 120, 92, 0.5);
         color: rgba(255, 255, 255, 0.9);
       }
 
-      .messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+      .messages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+      }
 
       .message.assistant .message-content {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.12);
         color: #fff;
       }
-      .message-content code { background: rgba(0, 0, 0, 0.3); color: #E8C4A0; }
-      .message-content pre { background: rgba(0, 0, 0, 0.4); border-color: rgba(255, 255, 255, 0.1); }
-      .message-content pre code { color: rgba(255, 255, 255, 0.9); }
-      .message-content a { color: #E8C4A0; }
-      .message-content hr { border-top-color: rgba(255, 255, 255, 0.15); }
+
+      .message-content code {
+        background: rgba(0, 0, 0, 0.3);
+        color: #E8C4A0;
+      }
+
+      .message-content pre {
+        background: rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .message-content pre code {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .message-content a {
+        color: #E8C4A0;
+      }
+
+      .message-content hr {
+        border-top-color: rgba(255, 255, 255, 0.15);
+      }
 
       .input-area {
         background: rgba(255, 255, 255, 0.06);
         border-top-color: rgba(255, 255, 255, 0.1);
       }
+
       .input-wrapper {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.15);
       }
-      .input-wrapper:focus-within { background: rgba(255, 255, 255, 0.12); }
-      .input-area textarea { color: #fff; }
-      .input-area textarea::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+      .input-wrapper:focus-within {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .input-area textarea {
+        color: #fff;
+      }
+
+      .input-area textarea::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
       .attach-btn {
         color: rgba(255, 255, 255, 0.5);
       }
-      .attach-btn:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+
+      .attach-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
       .record-btn {
         color: rgba(255, 255, 255, 0.7);
         background: rgba(255, 255, 255, 0.08);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       }
-      .record-btn:hover { 
-        background: rgba(255, 255, 255, 0.12); 
+
+      .record-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
         color: rgba(255, 255, 255, 0.9);
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
+
       .record-btn.recording {
         color: #fff;
         background: linear-gradient(145deg, #FF6B6B 0%, #FF8585 100%);
         box-shadow: 0 2px 12px rgba(255, 107, 107, 0.5);
       }
+
       .record-btn.recording:hover {
         background: linear-gradient(145deg, #FF8585 0%, #FFA0A0 100%);
         box-shadow: 0 3px 16px rgba(255, 107, 107, 0.6);
       }
+
       .record-indicator {
         background: #fff;
         box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
       }
+
       .attachment-pill {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.12);
       }
+
       .attachment-icon {
         background: rgba(255, 255, 255, 0.08);
       }
-      .attachment-name { color: rgba(255, 255, 255, 0.9); }
-      .attachment-size { color: rgba(255, 255, 255, 0.5); }
-      .attachment-remove { color: rgba(255, 255, 255, 0.6); }
-      .attachment-remove:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-      .attachment-status { color: rgba(255, 255, 255, 0.7); }
+
+      .attachment-name {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .attachment-size {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .attachment-remove {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .attachment-remove:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      .attachment-status {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
       .message-attachment-row {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.12);
       }
+
       .message-attachment-icon {
         background: rgba(255, 255, 255, 0.08);
       }
+
       .attachment-icon-svg {
         color: rgba(255, 255, 255, 0.5);
       }
-      .message-attachment-name { color: rgba(255, 255, 255, 0.9); }
-      .message-attachment-size { color: rgba(255, 255, 255, 0.5); }
 
-      .empty-state { color: rgba(255, 255, 255, 0.5); }
-      .empty-state p { color: rgba(255, 255, 255, 0.7); }
-      .empty-state .hint { color: rgba(255, 255, 255, 0.35); }
+      .message-attachment-name {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .message-attachment-size {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .empty-state {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .empty-state p {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .empty-state .hint {
+        color: rgba(255, 255, 255, 0.35);
+      }
+
       .empty-state-icon {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.6);
       }
-      .loading-dots span { background: rgba(255, 255, 255, 0.4); }
+
+      .loading-dots span {
+        background: rgba(255, 255, 255, 0.4);
+      }
 
       .thinking-block {
         background: rgba(204, 120, 92, 0.12);
         border-color: rgba(204, 120, 92, 0.25);
       }
-      .thinking-header { color: rgba(255, 255, 255, 0.5); }
-      .thinking-header:hover { background: rgba(204, 120, 92, 0.1); }
-      .thinking-text { color: rgba(255, 255, 255, 0.5); }
+
+      .thinking-header {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .thinking-header:hover {
+        background: rgba(204, 120, 92, 0.1);
+      }
+
+      .thinking-text {
+        color: rgba(255, 255, 255, 0.5);
+      }
 
       .steps-timeline {
         background: rgba(255, 255, 255, 0.05);
         border-color: rgba(255, 255, 255, 0.08);
       }
-      .step-line-top, .step-line-bottom, .step-line-extend { background: rgba(255, 255, 255, 0.15); }
-      .step-item:last-child .step-line-extend { background: transparent; }
-      .step-dot { background: rgba(255, 255, 255, 0.2); }
-      .step-header:hover { background: rgba(255, 255, 255, 0.06); }
-      .step-label { color: #fff !important; }
-      .step-item.thinking .step-label { color: #fff !important; }
-      .step-item.tool .step-label { color: #fff !important; }
-      .step-meta { color: rgba(255, 255, 255, 0.6); }
-      .step-chevron { color: rgba(255, 255, 255, 0.6); }
-      .step-text { color: #fff !important; }
-      .step-spinner { border-color: rgba(255, 255, 255, 0.15); border-top-color: rgba(255, 255, 255, 0.5); }
+
+      .step-line-top,
+      .step-line-bottom,
+      .step-line-extend {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .step-item:last-child .step-line-extend {
+        background: transparent;
+      }
+
+      .step-dot {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .step-header:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .step-label {
+        color: #fff !important;
+      }
+
+      .step-item.thinking .step-label {
+        color: #fff !important;
+      }
+
+      .step-item.tool .step-label {
+        color: #fff !important;
+      }
+
+      .step-meta {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .step-chevron {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .step-text {
+        color: #fff !important;
+      }
+
+      .step-spinner {
+        border-color: rgba(255, 255, 255, 0.15);
+        border-top-color: rgba(255, 255, 255, 0.5);
+      }
+
       .search-result-item {
         background: rgba(255, 255, 255, 0.08);
       }
+
       .search-result-item:hover {
         background: rgba(255, 255, 255, 0.12);
       }
-      .search-result-favicon { background: rgba(255, 255, 255, 0.1); }
-      .search-result-title { color: rgba(255, 255, 255, 0.85); }
-      .search-result-site { color: rgba(255, 255, 255, 0.4); }
+
+      .search-result-favicon {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .search-result-title {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .search-result-site {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
       .link-card {
         background: rgba(255, 255, 255, 0.08);
         border-color: rgba(255, 255, 255, 0.1);
       }
+
       .link-card:hover {
         background: rgba(255, 255, 255, 0.12);
         border-color: rgba(255, 255, 255, 0.15);
       }
-      .link-card-icon { background: rgba(255, 255, 255, 0.1); }
-      .link-card-title { color: rgba(255, 255, 255, 0.85); }
-      .link-card-url { color: rgba(255, 255, 255, 0.4); }
+
+      .link-card-icon {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .link-card-title {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .link-card-url {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
       .chat-link-item {
         background: rgba(255, 255, 255, 0.08);
       }
+
       .chat-link-item:hover {
         background: rgba(255, 255, 255, 0.12);
       }
-      .chat-link-icon { color: rgba(255, 255, 255, 0.4); }
-      .chat-link-title { color: rgba(255, 255, 255, 0.85); }
+
+      .chat-link-icon {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .chat-link-title {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
       .file-op {
         background: rgba(255, 255, 255, 0.05);
       }
-      .file-op-text { color: rgba(255, 255, 255, 0.6); }
+
+      .file-op-text {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
       .file-preview {
         border-color: rgba(255, 255, 255, 0.1);
       }
+
       .file-preview-header {
         background: rgba(255, 255, 255, 0.05);
         border-bottom-color: rgba(255, 255, 255, 0.08);
         color: rgba(255, 255, 255, 0.5);
       }
+
       .tool-output {
         background: rgba(0, 0, 0, 0.2);
         color: rgba(255, 255, 255, 0.6);
       }
-      .tool-output.error { background: rgba(255, 69, 58, 0.15); }
-      .citation-link { color: #E8C4A0; }
-      .citation-num { color: #E8C4A0; }
+
+      .tool-output.error {
+        background: rgba(255, 69, 58, 0.15);
+      }
+
+      .citation-link {
+        color: #E8C4A0;
+      }
+
+      .citation-num {
+        color: #E8C4A0;
+      }
+    }
+
+    /* Flow Dashboard Styles */
+    .flow-sidebar {
+      width: 260px;
+      background: #FAFAFA;
+      border-right: 1px solid #EAEAEA;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      flex-shrink: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui;
+      position: relative;
+      z-index: 200;
+    }
+
+    .flow-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 19px;
+      color: #1a1a1a;
+      margin-bottom: 28px;
+      padding: 0 8px;
+    }
+
+    .flow-logo-icon {
+      /* Simple icon placeholder */
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+    }
+
+    .flow-logo-trial-badge {
+      background: #A78BFA;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .flow-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: auto;
+    }
+
+    .flow-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #555;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .flow-nav-item:hover {
+      background: #EFEFEF;
+      color: #333;
+    }
+
+    .flow-nav-item.active {
+      background: #E8E8E8;
+      color: #111;
+      font-weight: 600;
+    }
+
+    .flow-nav-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flow-upgrade-card {
+      margin-top: 24px;
+      background: #fff;
+      border: 1px solid #EAEAEA;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .flow-upgrade-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .flow-progress-bar {
+      height: 4px;
+      background: #F0F0F0;
+      border-radius: 2px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .flow-progress-fill {
+      height: 100%;
+      background: #A78BFA;
+      /* Purple */
+      width: 42%;
+      border-radius: 2px;
+    }
+
+    .flow-upgrade-text {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .flow-upgrade-btn {
+      width: 100%;
+      padding: 8px;
+      background: #F4F4F5;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .flow-upgrade-btn:hover {
+      background: #E4E4E5;
+    }
+
+    .flow-bottom-links {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-top: 16px;
+      border-top: 1px solid #EAEAEA;
+    }
+
+    /* Main Area */
+    .flow-main {
+      flex: 1;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 40px;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .flow-main::-webkit-scrollbar {
+      display: none;
+    }
+
+    .flow-main {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Header */
+    .flow-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+      margin-top: 20px;
+    }
+
+    .flow-welcome {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111;
+    }
+
+    .flow-stats {
+      display: flex;
+      gap: 12px;
+    }
+
+    .flow-stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #FAFAFA;
+      border: 1px solid #EAEAEA;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    /* Hero Card */
+    .flow-hero-card {
+      background: #FFFCF0;
+      /* Creamy yellow */
+      border: 1px solid rgba(0, 0, 0, 0.03);
+      border-radius: 20px;
+      padding: 48px;
+      margin-bottom: 60px;
+      position: relative;
+      /* Subtle pattern or shadow */
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
+
+    .flow-hero-title {
+      font-family: 'Times New Roman', serif;
+      /* Serif for "Hold down" etc */
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .flow-hero-title b,
+    .flow-hero-title strong {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      font-weight: 700;
+    }
+
+    .flow-hero-subtitle {
+      font-size: 14px;
+      color: #555;
+      max-width: 500px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .flow-hero-subtitle strong {
+      color: #222;
+      font-weight: 600;
+    }
+
+    .flow-hero-btn {
+      background: #2D2D2D;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .flow-hero-btn:hover {
+      transform: translateY(-1px);
+      background: #1a1a1a;
+    }
+
+    /* Activity Feed */
+    .flow-activity-section {
+      width: 100%;
+    }
+
+    .flow-activity-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: #AAA;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+    }
+
+    .flow-activity-list {
+      border: 1px solid #EAEAEA;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .flow-activity-item {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 18px 24px;
+      background: #fff;
+      border-bottom: 1px solid #F4F4F4;
+      transition: background 0.1s;
+    }
+
+    .flow-activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .flow-activity-item:hover {
+      background: #FAFAFA;
+    }
+
+    .flow-activity-time {
+      font-size: 12px;
+      color: #999;
+      width: 60px;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow-activity-text {
+      font-size: 14px;
+      color: #333;
+    }
+
+    /* Override for home container to handle 2-col layout */
+    .home-container.active {
+      display: flex !important;
+      flex-direction: row !important;
+    }
+
+    /* Transcription History */
+    #list-history {
+      width: 100%;
+      max-width: 600px;
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 12px;
+      padding: 12px 16px;
+      text-align: left;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.7);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .history-item-text {
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    .history-item-meta {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.4);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* Notes Modal Styles */
+    .notes-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 10000;
+    }
+
+    .notes-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Notes Page Container */
+    .notes-container {
+      display: flex;
+      height: 100vh;
+      background: linear-gradient(180deg, #FEFEFE 0%, #F8F8F8 100%);
+    }
+
+    .notes-page-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .notes-page-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .notes-page-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .notes-header-section {
+      flex-shrink: 0;
+    }
+
+    .notes-page-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+      text-align: center;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .notes-input-section {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .notes-input-wrapper {
+      position: relative;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .notes-textarea {
+      flex: 1;
+      min-height: 60px;
+      max-height: 120px;
+      background: transparent;
+      border: none;
+      font-size: 15px;
+      font-family: inherit;
+      color: #000;
+      outline: none;
+      resize: none;
+      line-height: 1.6;
+      caret-color: #CC785C;
+    }
+
+    .notes-textarea::placeholder {
+      color: rgba(0, 0, 0, 0.4);
+    }
+
+    .notes-record-btn {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.08);
+      color: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .notes-record-btn:hover {
+      background: rgba(0, 0, 0, 0.12);
+      color: rgba(0, 0, 0, 0.7);
+      transform: scale(1.05);
+    }
+
+    .notes-record-btn.recording {
+      background: linear-gradient(145deg, #CC785C 0%, #D4846A 100%);
+      color: white;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.9;
+        transform: scale(1.05);
+      }
+    }
+
+    .notes-finish-btn {
+      align-self: flex-end;
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.6);
+      border: none;
+      padding: 10px 28px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .notes-finish-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    .notes-finish-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Notes Recents Section */
+    .notes-recents-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 16px;
+    }
+
+    .notes-recents-header {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .notes-recents-header span {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .notes-recents-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .notes-action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .notes-action-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .notes-list-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 200px;
+    }
+
+    .notes-list-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .notes-list-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .note-item {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .note-item:hover {
+      background: rgba(255, 255, 255, 0.8);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .note-item-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(0, 0, 0, 0.8);
+      margin-bottom: 8px;
+      word-wrap: break-word;
+    }
+
+    .note-item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.4);
+      font-weight: 500;
+    }
+
+    .note-item-delete {
+      background: transparent;
+      border: none;
+      color: rgba(247, 29, 17, 0.6);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    .note-item-delete:hover {
+      background: rgba(255, 69, 58, 0.1);
+      color: rgb(155, 14, 7);
+    }
+
+    .notes-empty {
+      text-align: center;
+      color: rgba(0, 0, 0, 0.4);
+      font-size: 14px;
+      padding: 40px 20px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+      .notes-modal,
+      .notes-list-modal {
+        background: rgba(30, 30, 30, 0.95);
+      }
+
+      .notes-modal-header h3,
+      .notes-list-header h3,
+      .note-item-text {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .notes-textarea {
+        color: #1b1919;
+        border-bottom-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .notes-textarea:focus {
+        border-bottom-color: #CC785C;
+      }
+
+      .notes-textarea::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      .note-item {
+        background: rgba(40, 40, 40, 0.6);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+
+      .note-item:hover {
+        background: rgba(50, 50, 50, 0.8);
+      }
+
+      .notes-list-close {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .notes-list-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .note-item-meta {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .notes-record-btn {
+        background: rgba(184, 63, 139, 0.05);
+        color: rgba(4, 4, 4, 0.5);
+      }
+
+      .notes-record-btn:hover {
+        background: rgba(184, 63, 139, 0.1);
+        color: rgba(243, 17, 17, 0.7);
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="login" class="login-container">
     <div class="login-card">
       <div class="logo"><img src="logo.svg" alt="Logo"></div>
-      <h1>Open Claude</h1>
+      <h1>Open Chatgpt</h1>
       <p class="subtitle">Sign in to continue</p>
       <button class="login-btn" id="login-btn">Continue</button>
       <p id="login-error" class="error"></p>
@@ -2073,9 +3300,12 @@
       <span class="sidebar-title">Chats</span>
       <div class="sidebar-spacer"></div>
       <button class="settings-btn" id="settings-btn" title="Settings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+          </path>
         </svg>
       </button>
       <button class="new-chat-btn" id="new-chat-btn" title="New chat">+</button>
@@ -2085,46 +3315,218 @@
     </div>
   </div>
 
-  <!-- Home page with model selector -->
+  <!-- Home page with Flow Dashboard design -->
   <div id="home" class="home-container">
-    <!-- Draggable area for window movement -->
-    <div class="home-drag-region"></div>
-    <div class="home-content">
-      <div class="home-logo">✦</div>
-      <div class="home-input-area">
-        <div class="home-input-wrapper">
-          <textarea id="home-input" class="home-input" placeholder="Message Claude..." rows="10"></textarea>
-          <div class="home-input-footer">
-            <!-- <div class="model-selector">
-              <button class="model-option active" data-model="claude-opus-4-5-20251101">Opus</button>
-              <button class="model-option" data-model="claude-sonnet-4-5-20250929">Sonnet</button>
-              <button class="model-option" data-model="claude-haiku-4-5-20251001">Haiku</button>
-            </div> -->
-            <!-- <button class="home-attach-btn" id="home-attach-btn" title="Attach files">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-              </svg>
-            </button> -->
-                   <button class="record-btn" id="record-btn" title="Record audio">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-          <span class="record-indicator"></span>
-        </button>
+    <!-- Sidebar -->
+    <aside class="flow-sidebar">
+      <div class="flow-logo">
+        <svg class="flow-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; width: 22px; height: 22px;">
+          <path d="M12 20V10"></path>
+          <path d="M18 20V4"></path>
+          <path d="M6 20v-4"></path>
+        </svg>
+        Flow
+        <span class="flow-logo-trial-badge">Pro Trial</span>
+      </div>
+
+      <nav class="flow-nav">
+        <a class="flow-nav-item active">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+          </span>
+          Home
+        </a>
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </span>
+          Dictionary
+        </a>
+        <!-- <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+              </path>
+            </svg>
+          </span>
+          Snippets
+        </a> -->
+        <!-- <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 7V4h3"></path>
+              <path d="M9 20h6"></path>
+              <path d="M12 4v16"></path>
+            </svg>
+          </span>
+          Style
+        </a> -->
+        <a class="flow-nav-item" id="view-notes-btn" style="cursor: pointer;">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+          </span>
+          Notes
+        </a>
+      </nav>
+
+      <div class="flow-upgrade-card">
+
+      </div>
+
+      <div class="flow-bottom-links">
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+              </path>
+            </svg>
+          </span>
+          Settings
+        </a>
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </span>
+          Help
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flow-main">
+      <div class="home-drag-region"
+        style="position: absolute; top:0; left:260px; right:0; height:30px; -webkit-app-region: drag; z-index:100;">
+      </div>
+
+      <div id="home-content">
+        <div class="flow-header">
+          <h1 class="flow-welcome">Welcome back, Dinh</h1>
+          <div class="flow-stats">
+            <div class="flow-stat-pill">
+              <span>🔥</span> 1 week
+            </div>
+            <div class="flow-stat-pill">
+              <span>🚀</span> 66 words
+            </div>
+            <div class="flow-stat-pill">
+              <span>🐌</span> 36 WPM
+            </div>
           </div>
-          <!-- <div class="attachment-container" id="home-attachment-container">
-            <div class="attachment-list" id="home-attachment-list"></div>
-            <div class="attachment-status" id="home-attachment-status"></div>
-          </div> -->
+        </div>
+
+        <div class="flow-hero-card">
+          <h2 class="flow-hero-title">Hold down <b>Ctrl</b> → +k to dictate in any app</h2>
+          <p class="flow-hero-subtitle">
+            Flow works in all your apps. Try it in <strong>email</strong>, <strong>messages</strong>,
+            <strong>docs</strong> or anywhere else. Use ctrl + win + space for hands-free mode.
+          </p>
+          <button class="flow-hero-btn">See how it works</button>
+        </div>
+
+        <div class="flow-activity-section" id="list-history">
+          <div class="flow-activity-header">Yesterday</div>
+          <div class="flow-activity-list">
+            <div class="flow-activity-item">
+              <div class="flow-activity-time">03:59 PM</div>
+              <div class="flow-activity-text">tương dẫn tôi đập trình C-SAP.</div>
+            </div>
+            <div class="flow-activity-item">
+              <div class="flow-activity-time">03:59 PM</div>
+              <div class="flow-activity-text">hello, hello, hello</div>
+            </div>
+            <div class="flow-activity-item">
+              <div class="flow-activity-time">03:56 PM</div>
+              <div class="flow-activity-text">I still use Ctrl+K to type.</div>
+            </div>
+            <div class="flow-activity-item">
+              <div class="flow-activity-time">03:55 PM</div>
+              <div class="flow-activity-text">Hello everyone.</div>
+            </div>
+            <div class="flow-activity-item">
+              <div class="flow-activity-time">03:55 PM</div>
+              <div class="flow-activity-text">Hello, hello, hello!</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="home-footer">
-      <button class="home-signout" id="logout-btn">Sign Out</button>
-    </div>
+
+      <!-- Notes Content (toggled with home content) -->
+      <div id="notes-content" class="notes-page-content" style="display: none;">
+        <div class="notes-header-section">
+          <h3 class="notes-page-title">For quick thoughts you want to come back to</h3>
+        </div>
+
+        <div class="notes-input-section">
+          <div class="notes-input-wrapper">
+            <textarea class="notes-textarea" id="notes-textarea" placeholder="Thank you!"></textarea>
+            <button class="notes-record-btn" id="notes-record-btn" title="Record audio">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                <path
+                  d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+              </svg>
+            </button>
+          </div>
+          <button class="notes-finish-btn" id="notes-finish-btn">Finish</button>
+        </div>
+
+        <div class="notes-recents-section">
+          <div class="notes-recents-header">
+            <span>RECENTS</span>
+            <div class="notes-recents-actions">
+              <button class="notes-action-btn" id="notes-search-btn" title="Search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
+              <button class="notes-action-btn" id="notes-list-btn" title="List view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+              <button class="notes-action-btn" id="notes-refresh-btn" title="Refresh">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="notes-list-content" id="notes-list-content">
+            <!-- Notes will be rendered here -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Hidden input to prevent JS errors if main.ts tries to access it -->
+    <textarea id="home-input" style="display:none;"></textarea>
   </div>
 
   <div id="chat" class="chat-container">
@@ -2135,7 +3537,8 @@
       </div>
       <div class="header-right">
         <button class="icon-btn" id="export-btn" title="Export to Markdown">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -2159,8 +3562,11 @@
     <div class="input-area">
       <div class="input-wrapper">
         <button class="attach-btn" id="attach-btn" title="Attach files">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+            </path>
           </svg>
         </button>
         <textarea id="input" placeholder="Message Claude..." rows="1"></textarea>
@@ -2176,6 +3582,140 @@
 
   <input type="file" id="file-input" multiple accept="*/*" style="display:none" />
 
+  <!-- Notes Page -->
+  <div id="notes" class="notes-container" style="display: none;">
+    <!-- Sidebar -->
+    <aside class="flow-sidebar">
+      <div class="flow-logo">
+        <svg class="flow-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; width: 22px; height: 22px;">
+          <path d="M12 20V10"></path>
+          <path d="M18 20V4"></path>
+          <path d="M6 20v-4"></path>
+        </svg>
+        Flow
+        <span class="flow-logo-trial-badge">Pro Trial</span>
+      </div>
+
+      <nav class="flow-nav">
+        <a class="flow-nav-item" id="nav-home-btn" style="cursor: pointer;">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+          </span>
+          Home
+        </a>
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </span>
+          Dictionary
+        </a>
+        <a class="flow-nav-item active" id="view-notes-btn-in-notes" style="cursor: pointer;">
+          <span class="flow-nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+          </span>
+          Notes
+        </a>
+      </nav>
+
+      <div class="flow-upgrade-card">
+      </div>
+
+      <div class="flow-bottom-links">
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+              </path>
+            </svg>
+          </span>
+          Settings
+        </a>
+        <a class="flow-nav-item">
+          <span class="flow-nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </span>
+          Help
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flow-main">
+      <div class="notes-page-content">
+        <div class="notes-header-section">
+          <h3 class="notes-page-title">For quick thoughts you want to come back to</h3>
+        </div>
+
+        <div class="notes-input-section">
+          <div class="notes-input-wrapper">
+            <textarea class="notes-textarea" id="notes-textarea" placeholder="Thank you!"></textarea>
+            <button class="notes-record-btn" id="notes-record-btn" title="Record audio">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                <path
+                  d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+              </svg>
+            </button>
+          </div>
+          <button class="notes-finish-btn" id="notes-finish-btn">Finish</button>
+        </div>
+
+        <div class="notes-recents-section">
+          <div class="notes-recents-header">
+            <span>RECENTS</span>
+            <div class="notes-recents-actions">
+              <button class="notes-action-btn" id="notes-search-btn" title="Search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
+              <button class="notes-action-btn" id="notes-list-btn" title="List view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+              <button class="notes-action-btn" id="notes-refresh-btn" title="Refresh">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="notes-list-content" id="notes-list-content">
+            <!-- Notes will be rendered here -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
   <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

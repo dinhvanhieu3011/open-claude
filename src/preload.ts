@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld('claude', {
   transcribeAudio: (audioData: ArrayBuffer, fileName?: string) => ipcRenderer.invoke('transcribe-audio', audioData, fileName),
   getBearerToken: () => ipcRenderer.invoke('get-bearer-token'),
 
+  // Audio ducking (volume control during recording)
+  audioDuckingStart: () => ipcRenderer.invoke('audio-ducking-start'),
+  audioDuckingStop: () => ipcRenderer.invoke('audio-ducking-stop'),
+
+  // Pre-warm bearer token for faster transcription
+  warmBearerToken: () => ipcRenderer.invoke('warm-bearer-token'),
+
   // Stream listeners
   onMessageStream: (callback: (data: { conversationId: string; text: string; fullText: string }) => void) => {
     ipcRenderer.on('message-stream', (_event, data) => callback(data));

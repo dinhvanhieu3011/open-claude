@@ -82,9 +82,28 @@
     // Start recording when window loads
     async function startRecording() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream, { 
-          mimeType: 'audio/webm;codecs=opus' 
+        // Pre-warm bearer token for faster transcription (fire-and-forget)
+        if (window.claude && window.claude.warmBearerToken) {
+          window.claude.warmBearerToken().catch(() => {
+            // Ignore errors - transcription will fetch token if needed
+          });
+        }
+
+        // Request high-quality audio with optimized constraints
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,  // Higher sample rate for better quality
+            channelCount: 1     // Mono is sufficient for speech
+          }
+        });
+
+        // Use high-quality encoding settings
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus',
+          audioBitsPerSecond: 128000  // 128kbps for high quality speech
         });
         
         audioChunks = [];

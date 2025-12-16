@@ -170,7 +170,9 @@ export async function transcribeAudio(
   fileName: string = 'audio.webm',
   language: string = 'auto'
 ): Promise<{ text: string }> {
+  console.time('[Transcribe] Bearer Token Fetch');
   const token = await getBearerToken();
+  console.timeEnd('[Transcribe] Bearer Token Fetch');
   if (!token) {
     throw new Error('Not authenticated - no bearer token');
   }
@@ -190,13 +192,18 @@ export async function transcribeAudio(
     contentType = 'audio/mp4';
   }
 
-  const body = Buffer.concat([
-    Buffer.from(`--${boundary}\r\n`),
-    Buffer.from(`Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`),
-    Buffer.from(`Content-Type: ${contentType}\r\n\r\n`),
-    fileBuffer,
-    Buffer.from(`\r\n--${boundary}--\r\n`)
-  ]);
+  // Optimize: Pre-calculate total size and allocate once
+  console.time('[Transcribe] Multipart Form Construction');
+  const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${contentType}\r\n\r\n`;
+  const footer = `\r\n--${boundary}--\r\n`;
+  const totalSize = Buffer.byteLength(header) + fileBuffer.length + Buffer.byteLength(footer);
+
+  const body = Buffer.allocUnsafe(totalSize);
+  let offset = 0;
+  offset += body.write(header, offset);
+  offset += fileBuffer.copy(body, offset);
+  body.write(footer, offset);
+  console.timeEnd('[Transcribe] Multipart Form Construction');
 
   return new Promise((resolve, reject) => {
     const request = net.request({

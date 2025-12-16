@@ -19,6 +19,9 @@ declare global {
       generateTitle: (convId: string, messageContent: string) => Promise<void>;
       uploadAttachments: (files: Array<{ name: string; size: number; type: string; data: ArrayBuffer | Uint8Array | number[] }>) => Promise<UploadedAttachmentPayload[]>;
       transcribeAudio: (audioData: ArrayBuffer, fileName?: string) => Promise<{ text: string }>;
+      audioDuckingStart: () => Promise<void>;
+      audioDuckingStop: () => Promise<void>;
+      warmBearerToken: () => Promise<void>;
       openSettings: () => Promise<void>;
       getSettings: () => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
       saveSettings: (settings: { spotlightKeybind?: string; spotlightPersistHistory?: boolean }) => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
@@ -28,6 +31,7 @@ declare global {
       onMessageToolResult: (callback: (data: ToolResultData) => void) => void;
       onMessageStream: (callback: (data: StreamData) => void) => void;
       onMessageComplete: (callback: (data: CompleteData) => void) => void;
+      receive: (channel: string, callback: (...args: any[]) => void) => void;
     };
   }
 }
@@ -104,7 +108,7 @@ interface AttachmentPayload {
   extracted_content?: string;
 }
 
-interface UploadedAttachmentPayload extends AttachmentPayload {}
+interface UploadedAttachmentPayload extends AttachmentPayload { }
 
 interface UploadedAttachment extends AttachmentPayload {
   id: string;
@@ -855,7 +859,7 @@ function buildToolResultContent(toolName: string, result: any, isError: boolean)
       try {
         const domain = new URL(url).hostname;
         icon = `https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(domain)}`;
-      } catch {}
+      } catch { }
     }
     if (!icon) icon = FALLBACK_FAVICON;
     return `
@@ -958,7 +962,7 @@ function buildToolResultContent(toolName: string, result: any, isError: boolean)
       try {
         const domain = new URL(url).hostname;
         icon = `https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(domain)}`;
-      } catch {}
+      } catch { }
     }
     if (!icon) icon = FALLBACK_FAVICON;
     return `
@@ -1802,6 +1806,16 @@ function setupEventListeners() {
   // Record audio button
   const recordBtn = $('record-btn');
   recordBtn?.addEventListener('click', toggleRecording);
+
+  // Listen for global shortcuts transcriptions
+  if (window.claude.receive) {
+    window.claude.receive('transcription-complete', (text: string) => {
+      console.log('Received global transcription:', text);
+      if (text) {
+        saveTranscriptionHistory(text);
+      }
+    });
+  }
 }
 
 // Audio recording state
@@ -1810,55 +1824,244 @@ let audioChunks: Blob[] = [];
 let isRecording = false;
 
 // Toggle audio recording
+interface TranscriptionItem {
+  text: string;
+  timestamp: string;
+}
+
+function saveTranscriptionHistory(text: string) {
+  try {
+    const historyJson = localStorage.getItem('transcriptionHistory');
+    let history: TranscriptionItem[] = historyJson ? JSON.parse(historyJson) : [];
+
+    history.unshift({
+      text,
+      timestamp: new Date().toISOString()
+    });
+
+    // Remove limit to keep all history
+    // if (history.length > 50) {
+    //   history = history.slice(0, 50);
+    // }
+
+    localStorage.setItem('transcriptionHistory', JSON.stringify(history));
+    renderTranscriptionHistory();
+    updateFlowStats();
+  } catch (e) {
+    console.error('Failed to save transcription history:', e);
+  }
+}
+
+// Calculate and update flow stats from transcription history
+function updateFlowStats() {
+  try {
+    const historyJson = localStorage.getItem('transcriptionHistory');
+    if (!historyJson) {
+      return;
+    }
+
+    const history: TranscriptionItem[] = JSON.parse(historyJson);
+
+    // Calculate total words
+    const totalWords = history.reduce((sum, item) => {
+      const wordCount = item.text.trim().split(/\s+/).filter(w => w.length > 0).length;
+      return sum + wordCount;
+    }, 0);
+
+    // Calculate streak (consecutive days with activity)
+    let streak = 0;
+    if (history.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const dates = new Set<string>();
+      history.forEach(item => {
+        const date = new Date(item.timestamp);
+        date.setHours(0, 0, 0, 0);
+        dates.add(date.toISOString().split('T')[0]);
+      });
+
+      const sortedDates = Array.from(dates).sort().reverse();
+
+      // Check if there's activity today or yesterday to start the streak
+      const mostRecentDate = new Date(sortedDates[0]);
+      const daysDiff = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff <= 1) {
+        streak = 1;
+        let currentDate = new Date(sortedDates[0]);
+
+        for (let i = 1; i < sortedDates.length; i++) {
+          const prevDate = new Date(sortedDates[i]);
+          const diff = Math.floor((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (diff === 1) {
+            streak++;
+            currentDate = prevDate;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // Calculate average WPM (words per minute)
+    // Estimate: assume each transcription took about 30 seconds on average
+    const avgSecondsPerTranscription = 30;
+    const totalMinutes = (history.length * avgSecondsPerTranscription) / 60;
+    const wpm = totalMinutes > 0 ? Math.round(totalWords / totalMinutes) : 0;
+
+    // Update UI
+    const statsContainer = document.querySelector('.flow-stats');
+    if (statsContainer) {
+      const streakText = streak === 0 ? '0 days' :
+                        streak === 1 ? '1 day' :
+                        streak < 7 ? `${streak} days` :
+                        streak < 14 ? `${Math.floor(streak / 7)} week` :
+                        `${Math.floor(streak / 7)} weeks`;
+
+      statsContainer.innerHTML = `
+        <div class="flow-stat-pill">
+          <span>🔥</span> ${streakText}
+        </div>
+        <div class="flow-stat-pill">
+          <span>🚀</span> ${totalWords.toLocaleString()} words
+        </div>
+        <div class="flow-stat-pill">
+          <span>🐌</span> ${wpm} WPM
+        </div>
+      `;
+    }
+  } catch (e) {
+    console.error('Failed to update flow stats:', e);
+  }
+}
+
+function renderTranscriptionHistory() {
+  const container = $('list-history');
+  if (!container) return;
+
+  try {
+    const historyJson = localStorage.getItem('transcriptionHistory');
+    if (!historyJson) {
+      container.innerHTML = `
+        <div class="flow-activity-header">Recent Activity</div>
+        <div class="flow-activity-list">
+          <div class="flow-activity-item" style="justify-content:center; color:#999; padding: 20px;">No history yet</div>
+        </div>
+      `;
+      return;
+    }
+
+    const history: TranscriptionItem[] = JSON.parse(historyJson);
+    const top10 = history.slice(0, 10);
+
+    const itemsHtml = top10.map(item => {
+      const date = new Date(item.timestamp);
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="flow-activity-item">
+          <div class="flow-activity-time">${timeStr}</div>
+          <div class="flow-activity-text">${escapeHtml(item.text)}</div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="flow-activity-header">Recent Activity</div>
+      <div class="flow-activity-list">
+        ${itemsHtml}
+      </div>
+    `;
+  } catch (e) {
+    console.error('Failed to render transcription history:', e);
+  }
+}
+
 async function toggleRecording() {
   const recordBtn = $('record-btn');
   const chatInputEl = $('input') as HTMLTextAreaElement;
   const homeInputEl = $('home-input') as HTMLTextAreaElement;
-  
+
   // Determine which input to use based on which view is visible
   const homeContainer = document.getElementById('home');
   const chatContainer = document.getElementById('chat');
   const isHomeView = homeContainer && getComputedStyle(homeContainer).display !== 'none';
   const inputEl = isHomeView ? homeInputEl : chatInputEl;
-  
+
   if (!isRecording) {
     // Start recording
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+      // Pre-warm bearer token for faster transcription (fire-and-forget)
+      if (window.claude.warmBearerToken) {
+        window.claude.warmBearerToken().catch(() => {
+          // Ignore errors - transcription will fetch token if needed
+        });
+      }
+
+      // Start audio ducking to reduce other apps' volume
+      if (window.claude.audioDuckingStart) {
+        await window.claude.audioDuckingStart();
+      }
+
+      // Request high-quality audio with optimized constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,  // Higher sample rate for better quality
+          channelCount: 1     // Mono is sufficient for speech
+        }
       });
-      
+
+      // Use high-quality encoding settings
+      const options: MediaRecorderOptions = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000  // 128kbps for high quality speech
+      };
+
+      mediaRecorder = new MediaRecorder(stream, options);
+
       audioChunks = [];
-      
+
       mediaRecorder.addEventListener('dataavailable', (event) => {
         if (event.data.size > 0) {
           audioChunks.push(event.data);
         }
       });
-      
+
       mediaRecorder.addEventListener('stop', async () => {
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
-        
+
+        // Stop audio ducking - restore system volume
+        if (window.claude.audioDuckingStop) {
+          await window.claude.audioDuckingStop();
+        }
+
         // Create blob from chunks
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        
+
         // Convert to ArrayBuffer
         const arrayBuffer = await audioBlob.arrayBuffer();
-        
+
         // Show loading state
         if (inputEl) {
           inputEl.placeholder = 'Transcribing...';
           inputEl.disabled = true;
         }
-        
+
         try {
           // Call transcribe API
           const result = await window.claude.transcribeAudio(arrayBuffer, 'audio.webm');
-          
+
           console.log('Transcription result:', result);
-          
+
+          if (result && result.text) {
+            saveTranscriptionHistory(result.text);
+          }
+
           // Insert transcribed text into input - always add new line if there's existing text
           if (result && result.text) {
             if (inputEl) {
@@ -1869,14 +2072,14 @@ async function toggleRecording() {
               } else {
                 inputEl.value = result.text;
               }
-              
+
               // Auto resize based on which input is being used
               if (isHomeView && homeInputEl) {
                 autoResizeHome(homeInputEl);
               } else if (chatInputEl) {
                 autoResize(chatInputEl);
               }
-              
+
               inputEl.focus();
             }
           }
@@ -1891,16 +2094,16 @@ async function toggleRecording() {
           }
         }
       });
-      
+
       mediaRecorder.start();
       isRecording = true;
-      
+
       // Update UI
       if (recordBtn) {
         recordBtn.classList.add('recording');
         recordBtn.title = 'Stop recording';
       }
-      
+
     } catch (error) {
       console.error('Failed to start recording:', error);
       alert('Could not access microphone. Please check permissions.');
@@ -1910,9 +2113,9 @@ async function toggleRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
     }
-    
+
     isRecording = false;
-    
+
     // Update UI
     if (recordBtn) {
       recordBtn.classList.remove('recording');
@@ -1921,7 +2124,309 @@ async function toggleRecording() {
   }
 }
 
+// Notes functionality
+interface NoteItem {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
+let notesMediaRecorder: MediaRecorder | null = null;
+let notesAudioChunks: Blob[] = [];
+let isNotesRecording = false;
+
+function showNotesPage() {
+  const homeContent = $('home-content');
+  const notesContent = $('notes-content');
+  const textarea = $('notes-textarea') as HTMLTextAreaElement;
+
+  if (homeContent) homeContent.style.display = 'none';
+  if (notesContent) notesContent.style.display = 'flex';
+  if (textarea) {
+    textarea.value = '';
+    textarea.focus();
+  }
+
+  // Update active state in sidebar
+  const viewNotesBtn = $('view-notes-btn');
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  if (viewNotesBtn) viewNotesBtn.classList.add('active');
+
+  // Render the notes list immediately
+  renderNotesList();
+}
+
+function showHomePage() {
+  const homeContent = $('home-content');
+  const notesContent = $('notes-content');
+  const recordBtn = $('notes-record-btn');
+
+  if (homeContent) homeContent.style.display = 'block';
+  if (notesContent) notesContent.style.display = 'none';
+  if (recordBtn) recordBtn.classList.remove('recording');
+
+  // Update active state in sidebar
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  const homeNavItems = document.querySelectorAll('.flow-nav-item');
+  if (homeNavItems.length > 0) homeNavItems[0].classList.add('active');
+
+  // Stop recording if active
+  if (isNotesRecording && notesMediaRecorder) {
+    notesMediaRecorder.stop();
+    isNotesRecording = false;
+  }
+}
+
+function saveNote(text: string) {
+  if (!text.trim()) return;
+
+  try {
+    const notesJson = localStorage.getItem('notes');
+    let notes: NoteItem[] = notesJson ? JSON.parse(notesJson) : [];
+
+    const newNote: NoteItem = {
+      id: crypto.randomUUID(),
+      text: text.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    notes.unshift(newNote);
+    localStorage.setItem('notes', JSON.stringify(notes));
+
+    console.log('Note saved:', newNote);
+  } catch (e) {
+    console.error('Failed to save note:', e);
+  }
+}
+
+function deleteNote(id: string) {
+  try {
+    const notesJson = localStorage.getItem('notes');
+    if (!notesJson) return;
+
+    let notes: NoteItem[] = JSON.parse(notesJson);
+    notes = notes.filter(note => note.id !== id);
+
+    localStorage.setItem('notes', JSON.stringify(notes));
+    renderNotesList();
+  } catch (e) {
+    console.error('Failed to delete note:', e);
+  }
+}
+
+function renderNotesList() {
+  const container = $('notes-list-content');
+  if (!container) return;
+
+  try {
+    const notesJson = localStorage.getItem('notes');
+    if (!notesJson) {
+      container.innerHTML = '<div class="notes-empty">No notes yet. Create your first note!</div>';
+      return;
+    }
+
+    const notes: NoteItem[] = JSON.parse(notesJson);
+    if (notes.length === 0) {
+      container.innerHTML = '<div class="notes-empty">No notes yet. Create your first note!</div>';
+      return;
+    }
+
+    const notesHtml = notes.map(note => {
+      const date = new Date(note.timestamp);
+      const dateStr = date.toLocaleDateString();
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      return `
+        <div class="note-item" data-id="${note.id}">
+          <div class="note-item-text">${escapeHtml(note.text)}</div>
+          <div class="note-item-meta">
+            <span>${dateStr} ${timeStr}</span>
+            <button class="note-item-delete" data-id="${note.id}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = notesHtml;
+
+    // Add delete event listeners
+    container.querySelectorAll('.note-item-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (btn as HTMLElement).dataset.id;
+        if (id && confirm('Are you sure you want to delete this note?')) {
+          deleteNote(id);
+        }
+      });
+    });
+  } catch (e) {
+    console.error('Failed to render notes list:', e);
+    container.innerHTML = '<div class="notes-empty">Error loading notes</div>';
+  }
+}
+
+async function toggleNotesRecording() {
+  const recordBtn = $('notes-record-btn');
+  const textarea = $('notes-textarea') as HTMLTextAreaElement;
+
+  if (!isNotesRecording) {
+    // Start recording
+    try {
+      // Start audio ducking to reduce other apps' volume
+      if (window.claude.audioDuckingStart) {
+        await window.claude.audioDuckingStart();
+      }
+
+      // Request high-quality audio with optimized constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,  // Higher sample rate for better quality
+          channelCount: 1     // Mono is sufficient for speech
+        }
+      });
+
+      // Use high-quality encoding settings
+      const options: MediaRecorderOptions = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000  // 128kbps for high quality speech
+      };
+
+      notesMediaRecorder = new MediaRecorder(stream, options);
+
+      notesAudioChunks = [];
+
+      notesMediaRecorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          notesAudioChunks.push(event.data);
+        }
+      });
+
+      notesMediaRecorder.addEventListener('stop', async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+
+        // Stop audio ducking - restore system volume
+        if (window.claude.audioDuckingStop) {
+          await window.claude.audioDuckingStop();
+        }
+
+        // Create blob from chunks
+        const audioBlob = new Blob(notesAudioChunks, { type: 'audio/webm' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+
+        // Show loading state
+        if (textarea) {
+          textarea.placeholder = 'Transcribing...';
+          textarea.disabled = true;
+        }
+
+        try {
+          // Call transcribe API
+          const result = await window.claude.transcribeAudio(arrayBuffer, 'audio.webm');
+
+          if (result && result.text) {
+            if (textarea) {
+              const currentText = textarea.value.trim();
+              if (currentText) {
+                textarea.value = currentText + '\n' + result.text;
+              } else {
+                textarea.value = result.text;
+              }
+              textarea.focus();
+            }
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+          alert('Failed to transcribe audio: ' + (error instanceof Error ? error.message : String(error)));
+        } finally {
+          // Reset state
+          if (textarea) {
+            textarea.placeholder = 'Type or speak your note...';
+            textarea.disabled = false;
+          }
+        }
+      });
+
+      notesMediaRecorder.start();
+      isNotesRecording = true;
+
+      // Update UI
+      if (recordBtn) {
+        recordBtn.classList.add('recording');
+        recordBtn.title = 'Stop recording';
+      }
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  } else {
+    // Stop recording
+    if (notesMediaRecorder && notesMediaRecorder.state !== 'inactive') {
+      notesMediaRecorder.stop();
+    }
+
+    isNotesRecording = false;
+
+    // Update UI
+    if (recordBtn) {
+      recordBtn.classList.remove('recording');
+      recordBtn.title = 'Record audio';
+    }
+  }
+}
+
+function setupNotesEventListeners() {
+  // Notes finish button - save and clear textarea, then refresh list
+  $('notes-finish-btn')?.addEventListener('click', () => {
+    const textarea = $('notes-textarea') as HTMLTextAreaElement;
+    if (textarea && textarea.value.trim()) {
+      saveNote(textarea.value);
+      textarea.value = '';
+      renderNotesList();
+      console.log('Note saved successfully!');
+    }
+  });
+
+  // Notes record button
+  $('notes-record-btn')?.addEventListener('click', toggleNotesRecording);
+
+  // View Notes button in home page sidebar
+  const viewNotesBtn = $('view-notes-btn');
+  console.log('View Notes button:', viewNotesBtn);
+  viewNotesBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log('View Notes button clicked!');
+    showNotesPage();
+  });
+
+  // Handle click on first nav item (Home)
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  if (navItems.length > 0) {
+    navItems[0].addEventListener('click', (e) => {
+      e.preventDefault();
+      showHomePage();
+    });
+  }
+
+  // Refresh button
+  $('notes-refresh-btn')?.addEventListener('click', () => {
+    renderNotesList();
+  });
+}
+
+// Make functions globally accessible for navigation
+(window as any).showNotesPage = showNotesPage;
+(window as any).showHomePage = showHomePage;
+
 // Start the app
 init();
 setupEventListeners();
+setupNotesEventListeners();
 renderAttachmentList();
+renderTranscriptionHistory();
+updateFlowStats();
