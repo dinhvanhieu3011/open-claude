@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(pnpm run build:*)",
-      "Bash(pnpm run build:main:*)"
+      "Bash(pnpm run build:main:*)",
+      "Bash(pnpm run dev)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(node install.js:*)",
+      "Bash(electron:*)",
+      "Bash(ls:*)",
+      "Bash(dir node_modules.binelectron*)",
+      "Bash(./node_modules/.bin/electron .)",
+      "Bash(npm run build:*)",
+      "Bash(npm start)"
     ]
   }
 }

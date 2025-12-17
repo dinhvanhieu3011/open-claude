@@ -152,50 +152,6 @@
       word-wrap: break-word;
     }
 
-    /* Markdown styles - matching main chat */
-    .ai-response p { margin: 0 0 6px 0; }
-    .ai-response p:last-child { margin-bottom: 0; }
-    .ai-response p:first-child { margin-top: 0; }
-    .ai-response h1, .ai-response h2, .ai-response h3 { margin: 10px 0 4px; font-weight: 600; }
-    .ai-response h1:first-child, .ai-response h2:first-child, .ai-response h3:first-child { margin-top: 0; }
-    .ai-response h1 { font-size: 1.2em; }
-    .ai-response h2 { font-size: 1.1em; }
-    .ai-response h3 { font-size: 1.05em; }
-    .ai-response strong { font-weight: 600; }
-    .ai-response code {
-      font-family: 'SF Mono', Menlo, monospace;
-      font-size: 0.9em;
-      background: rgba(0, 0, 0, 0.08);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: #9a5d3a;
-    }
-    .ai-response pre {
-      background: rgba(0, 0, 0, 0.05);
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      border-radius: 10px;
-      padding: 12px;
-      overflow-x: auto;
-      margin: 8px 0;
-    }
-    .ai-response pre code { background: transparent; padding: 0; font-size: 12px; line-height: 1.5; color: #333; }
-    .ai-response ul, .ai-response ol { margin: 6px 0; padding-left: 20px; }
-    .ai-response li { margin: 2px 0; }
-    .ai-response blockquote {
-      border-left: 3px solid #CC785C;
-      margin: 8px 0;
-      padding: 6px 12px;
-      background: rgba(204, 120, 92, 0.1);
-      border-radius: 0 8px 8px 0;
-    }
-    .ai-response a { color: #9a5d3a; text-decoration: none; }
-    .ai-response a:hover { text-decoration: underline; }
-    .ai-response hr {
-      border: none;
-      border-top: 1px solid rgba(0, 0, 0, 0.12);
-      margin: 12px 0;
-    }
-
     .loading-dots {
       display: inline-flex;
       gap: 4px;

@@ -1,5 +1,4 @@
-import { parseMarkdown } from './markdown.js';
-
+// Renderer main script
 
 declare global {
   interface Window {
@@ -23,8 +22,8 @@ declare global {
       audioDuckingStop: () => Promise<void>;
       warmBearerToken: () => Promise<void>;
       openSettings: () => Promise<void>;
-      getSettings: () => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
-      saveSettings: (settings: { spotlightKeybind?: string; spotlightPersistHistory?: boolean }) => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean }>;
+      getSettings: () => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean; dictionary?: Record<string, string>; llmCorrectionEnabled?: boolean; llmCorrectionPrompt?: string }>;
+      saveSettings: (settings: { spotlightKeybind?: string; spotlightPersistHistory?: boolean; dictionary?: Record<string, string>; llmCorrectionEnabled?: boolean; llmCorrectionPrompt?: string }) => Promise<{ spotlightKeybind?: string; spotlightPersistHistory?: boolean; dictionary?: Record<string, string>; llmCorrectionEnabled?: boolean; llmCorrectionPrompt?: string }>;
       onMessageThinking: (callback: (data: ThinkingData) => void) => void;
       onMessageThinkingStream: (callback: (data: ThinkingStreamData) => void) => void;
       onMessageToolUse: (callback: (data: ToolUseData) => void) => void;
@@ -686,7 +685,7 @@ function addMessage(role: string, content: string, raw = false, storedParentUuid
 
   const c = document.createElement('div');
   c.className = 'message-content';
-  c.innerHTML = role === 'user' ? escapeHtml(content) : (raw ? content : parseMarkdown(content));
+  c.innerHTML = role === 'user' ? escapeHtml(content) : (raw ? content : escapeHtml(content));
   el.appendChild(c);
 
   if (role === 'user' && attachments.length > 0) {
@@ -1076,7 +1075,7 @@ function buildInterleavedContent(steps: Step[]): string {
         html += '</div>';
         currentTimelineSteps = [];
       }
-      html += parseMarkdown(step.text || '', step.citations);
+      html += escapeHtml(step.text || '');
     } else {
       currentTimelineSteps.push(step);
     }
@@ -1143,7 +1142,7 @@ function buildStreamingContent(): string {
         html += '</div>';
         currentTimelineSteps = [];
       }
-      html += parseMarkdown(step.text || '');
+      html += escapeHtml(step.text || '');
     } else {
       currentTimelineSteps.push(step);
     }
@@ -1377,8 +1376,8 @@ async function login() {
 
   const r = await window.claude.login();
   if (r.success) {
-    showChat();
-    await startNewConversation();
+    showHome();
+    // await startNewConversation(); // Don't create empty conversation on home screen
     loadConversationsList();
   } else {
     if (loginError) loginError.textContent = r.error || 'Failed';
@@ -1710,9 +1709,15 @@ function setupEventListeners() {
   // New chat button
   $('new-chat-btn')?.addEventListener('click', newChat);
 
-  // Settings button
+  // Settings buttons
   $('settings-btn')?.addEventListener('click', () => {
-    window.claude.openSettings();
+    showSettingsPage();
+  });
+  $('home-settings-btn')?.addEventListener('click', () => {
+    showSettingsPage();
+  });
+  $('notes-settings-btn')?.addEventListener('click', () => {
+    showSettingsPage();
   });
 
   // Export button
@@ -1915,10 +1920,10 @@ function updateFlowStats() {
     const statsContainer = document.querySelector('.flow-stats');
     if (statsContainer) {
       const streakText = streak === 0 ? '0 days' :
-                        streak === 1 ? '1 day' :
-                        streak < 7 ? `${streak} days` :
-                        streak < 14 ? `${Math.floor(streak / 7)} week` :
-                        `${Math.floor(streak / 7)} weeks`;
+        streak === 1 ? '1 day' :
+          streak < 7 ? `${streak} days` :
+            streak < 14 ? `${Math.floor(streak / 7)} week` :
+              `${Math.floor(streak / 7)} weeks`;
 
       statsContainer.innerHTML = `
         <div class="flow-stat-pill">
@@ -2138,10 +2143,14 @@ let isNotesRecording = false;
 function showNotesPage() {
   const homeContent = $('home-content');
   const notesContent = $('notes-content');
+  const dictionaryContent = $('dictionary-content');
+  const settingsContent = $('settings-content');
   const textarea = $('notes-textarea') as HTMLTextAreaElement;
 
   if (homeContent) homeContent.style.display = 'none';
   if (notesContent) notesContent.style.display = 'flex';
+  if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (settingsContent) settingsContent.style.display = 'none';
   if (textarea) {
     textarea.value = '';
     textarea.focus();
@@ -2157,13 +2166,41 @@ function showNotesPage() {
   renderNotesList();
 }
 
+function showDictionaryPage() {
+  const homeContent = $('home-content');
+  const notesContent = $('notes-content');
+  const dictionaryContent = $('dictionary-content');
+  const settingsContent = $('settings-content');
+  const textarea = $('dictionary-textarea') as HTMLTextAreaElement;
+
+  if (homeContent) homeContent.style.display = 'none';
+  if (notesContent) notesContent.style.display = 'none';
+  if (dictionaryContent) dictionaryContent.style.display = 'flex';
+  if (settingsContent) settingsContent.style.display = 'none';
+
+  // Load current dictionary settings
+  if (textarea) {
+    loadDictionarySettings();
+  }
+
+  // Update active state in sidebar
+  const viewDictionaryBtn = $('view-dictionary-btn');
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  if (viewDictionaryBtn) viewDictionaryBtn.classList.add('active');
+}
+
 function showHomePage() {
   const homeContent = $('home-content');
   const notesContent = $('notes-content');
+  const dictionaryContent = $('dictionary-content');
+  const settingsContent = $('settings-content');
   const recordBtn = $('notes-record-btn');
 
   if (homeContent) homeContent.style.display = 'block';
   if (notesContent) notesContent.style.display = 'none';
+  if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (settingsContent) settingsContent.style.display = 'none';
   if (recordBtn) recordBtn.classList.remove('recording');
 
   // Update active state in sidebar
@@ -2177,6 +2214,421 @@ function showHomePage() {
     notesMediaRecorder.stop();
     isNotesRecording = false;
   }
+}
+
+function showSettingsPage() {
+  const homeContent = $('home-content');
+  const notesContent = $('notes-content');
+  const dictionaryContent = $('dictionary-content');
+  const settingsContent = $('settings-content');
+  const recordBtn = $('notes-record-btn');
+
+  if (homeContent) homeContent.style.display = 'none';
+  if (notesContent) notesContent.style.display = 'none';
+  if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (settingsContent) settingsContent.style.display = 'flex';
+  if (recordBtn) recordBtn.classList.remove('recording');
+
+  // Update active state in sidebar
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  // Settings buttons don't have active state in this design
+
+  // Stop recording if active
+  if (isNotesRecording && notesMediaRecorder) {
+    notesMediaRecorder.stop();
+    isNotesRecording = false;
+  }
+
+  // Load settings into the page
+  loadPageSettings();
+}
+
+// Settings page management
+async function loadPageSettings() {
+  const settings = await window.claude.getSettings() as any;
+
+  if (!settings) return;
+
+  // Update displays
+  const pageKeybindDisplay = $('page-keybind-display');
+  const pageRecordingKeybindDisplay = $('page-recording-keybind-display');
+  const pagePersistHistoryCheckbox = $('page-persist-history') as HTMLInputElement;
+  const pageDictionaryInput = $('page-dictionary-input') as HTMLTextAreaElement;
+  const pageLlmCorrectionToggle = $('page-llm-correction-toggle') as HTMLInputElement;
+  const pageLlmPromptInput = $('page-llm-prompt-input') as HTMLTextAreaElement;
+
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const formatKeybind = (keybind: string) => {
+    return keybind
+      .replace('CommandOrControl', isMac ? '⌘' : 'Ctrl')
+      .replace('Command', '⌘')
+      .replace('Control', 'Ctrl')
+      .replace('Shift', '⇧')
+      .replace('Alt', '⌥')
+      .replace('Option', '⌥')
+      .replace(/\+/g, ' + ');
+  };
+
+  if (pageKeybindDisplay && settings.spotlightKeybind) {
+    pageKeybindDisplay.textContent = formatKeybind(settings.spotlightKeybind);
+  }
+  if (pageRecordingKeybindDisplay && settings.recordingKeybind) {
+    pageRecordingKeybindDisplay.textContent = formatKeybind(settings.recordingKeybind);
+  }
+  if (pagePersistHistoryCheckbox && settings.spotlightPersistHistory !== undefined) {
+    pagePersistHistoryCheckbox.checked = settings.spotlightPersistHistory;
+  }
+
+  if (pageDictionaryInput) {
+    pageDictionaryInput.value = settings.dictionary
+      ? Object.entries(settings.dictionary).map(([key, value]) => `${key}=${value}`).join('\n')
+      : '';
+  }
+
+  if (pageLlmCorrectionToggle) pageLlmCorrectionToggle.checked = !!settings.llmCorrectionEnabled;
+  if (pageLlmPromptInput) {
+    pageLlmPromptInput.value = settings.llmCorrectionPrompt || 'Fix grammar, punctuation, and capitalization. Return only the corrected text without any explanation.';
+  }
+
+  updatePageLLMUIState();
+}
+
+function updatePageLLMUIState() {
+  const pageLlmCorrectionToggle = $('page-llm-correction-toggle') as HTMLInputElement;
+  const pageLlmPromptContainer = $('page-llm-prompt-container');
+
+  if (pageLlmCorrectionToggle && pageLlmPromptContainer) {
+    if (pageLlmCorrectionToggle.checked) {
+      pageLlmPromptContainer.style.opacity = '1';
+      pageLlmPromptContainer.style.pointerEvents = 'auto';
+    } else {
+      pageLlmPromptContainer.style.opacity = '0.5';
+      pageLlmPromptContainer.style.pointerEvents = 'none';
+    }
+  }
+}
+
+// Helper: Dictionary object to string
+function dictionaryToString(dict: Record<string, string> | undefined): string {
+  if (!dict) return '';
+  return Object.entries(dict)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+}
+
+// Helper: String to Dictionary object
+function stringToDictionary(str: string): Record<string, string> {
+  const dict: Record<string, string> = {};
+  str.split('\n').forEach(line => {
+    const parts = line.split('=');
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const value = parts.slice(1).join('=').trim();
+      if (key && value) {
+        dict[key] = value;
+      }
+    }
+  });
+  return dict;
+}
+
+// Save keyboard shortcut settings
+async function savePageKeybind(keybind: string, isRecording: boolean = false) {
+  try {
+    const settingKey = isRecording ? 'recordingKeybind' : 'spotlightKeybind';
+    await window.claude.saveSettings({ [settingKey]: keybind } as any);
+    console.log(`Saved ${settingKey}:`, keybind);
+  } catch (e) {
+    console.error('Failed to save keybind:', e);
+  }
+}
+
+// Save persist history setting
+async function savePagePersistHistory(value: boolean) {
+  try {
+    await window.claude.saveSettings({ spotlightPersistHistory: value } as any);
+    console.log('Saved persist history:', value);
+  } catch (e) {
+    console.error('Failed to save persist history:', e);
+  }
+}
+
+// Save transcription settings (debounced)
+let saveTranscriptionTimeout: any;
+async function savePageTranscriptionSettings() {
+  clearTimeout(saveTranscriptionTimeout);
+  saveTranscriptionTimeout = setTimeout(async () => {
+    try {
+      const pageDictionaryInput = $('page-dictionary-input') as HTMLTextAreaElement;
+      const pageLlmCorrectionToggle = $('page-llm-correction-toggle') as HTMLInputElement;
+      const pageLlmPromptInput = $('page-llm-prompt-input') as HTMLTextAreaElement;
+
+      if (!pageDictionaryInput || !pageLlmCorrectionToggle || !pageLlmPromptInput) return;
+
+      const settings = {
+        dictionary: stringToDictionary(pageDictionaryInput.value),
+        llmCorrectionEnabled: pageLlmCorrectionToggle.checked,
+        llmCorrectionPrompt: pageLlmPromptInput.value
+      };
+
+      await window.claude.saveSettings(settings as any);
+      console.log('Saved transcription settings:', settings);
+    } catch (e) {
+      console.error('Failed to save transcription settings:', e);
+    }
+  }, 500);
+}
+
+// Keybind recording state for page settings
+let isRecordingPageKeybind = false;
+let isRecordingPageRecordingKeybind = false;
+let pendingPageKeybind: string | null = null;
+let pendingPageRecordingKeybind: string | null = null;
+
+// Convert key event to Electron accelerator format
+function keyEventToAccelerator(e: KeyboardEvent): { accelerator: string; isComplete: boolean } {
+  const parts: string[] = [];
+
+  if (e.metaKey || e.ctrlKey) {
+    parts.push('CommandOrControl');
+  }
+  if (e.shiftKey) {
+    parts.push('Shift');
+  }
+  if (e.altKey) {
+    parts.push('Alt');
+  }
+
+  // Get the key
+  let key = e.key;
+
+  // Check if this is a modifier-only press
+  const isModifierOnly = ['Meta', 'Control', 'Shift', 'Alt'].includes(key);
+
+  if (!isModifierOnly) {
+    // Normalize key names
+    if (key === ' ') key = 'Space';
+    if (key.length === 1) key = key.toUpperCase();
+
+    // Map special keys
+    const keyMap: Record<string, string> = {
+      'ArrowUp': 'Up',
+      'ArrowDown': 'Down',
+      'ArrowLeft': 'Left',
+      'ArrowRight': 'Right',
+      'Escape': 'Escape',
+      'Enter': 'Return',
+      'Backspace': 'Backspace',
+      'Delete': 'Delete',
+      'Tab': 'Tab',
+    };
+
+    if (keyMap[key]) {
+      key = keyMap[key];
+    }
+
+    parts.push(key);
+  }
+
+  return {
+    accelerator: parts.join('+'),
+    isComplete: !isModifierOnly && parts.length >= 2
+  };
+}
+
+// Format keybind for display
+function formatKeybindForDisplay(keybind: string): string {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  return keybind
+    .replace('CommandOrControl', isMac ? '⌘' : 'Ctrl')
+    .replace('Command', '⌘')
+    .replace('Control', 'Ctrl')
+    .replace('Shift', '⇧')
+    .replace('Alt', '⌥')
+    .replace('Option', '⌥')
+    .replace(/\+/g, ' + ');
+}
+
+// Setup settings page event listeners
+function setupSettingsEventListeners() {
+  const pageKeybindInput = $('page-keybind-input');
+  const pageKeybindDisplay = $('page-keybind-display');
+  const pageRecordingKeybindInput = $('page-recording-keybind-input');
+  const pageRecordingKeybindDisplay = $('page-recording-keybind-display');
+  const pagePersistHistoryCheckbox = $('page-persist-history') as HTMLInputElement;
+  const pageDictionaryInput = $('page-dictionary-input') as HTMLTextAreaElement;
+  const pageLlmCorrectionToggle = $('page-llm-correction-toggle') as HTMLInputElement;
+  const pageLlmPromptInput = $('page-llm-prompt-input') as HTMLTextAreaElement;
+
+  // Spotlight keybind recording
+  if (pageKeybindInput && pageKeybindDisplay) {
+    pageKeybindInput.addEventListener('click', () => {
+      if (!isRecordingPageKeybind) {
+        isRecordingPageKeybind = true;
+        pendingPageKeybind = null;
+        pageKeybindInput.classList.add('recording');
+        pageKeybindDisplay.textContent = 'Press keys...';
+        pageKeybindInput.focus();
+      }
+    });
+
+    pageKeybindInput.addEventListener('keydown', (e) => {
+      if (!isRecordingPageKeybind) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Handle Escape to cancel
+      if (e.key === 'Escape') {
+        stopPageKeybindRecording(false);
+        return;
+      }
+
+      // Handle Enter to confirm
+      if (e.key === 'Enter' && pendingPageKeybind) {
+        stopPageKeybindRecording(true);
+        return;
+      }
+
+      const result = keyEventToAccelerator(e);
+
+      // Update display to show current keys being pressed
+      if (result.accelerator) {
+        pageKeybindDisplay.textContent = formatKeybindForDisplay(result.accelerator);
+
+        // If we have a complete combo (modifier + key), store it as pending
+        if (result.isComplete) {
+          pendingPageKeybind = result.accelerator;
+        }
+      }
+    });
+
+    pageKeybindInput.addEventListener('blur', () => {
+      stopPageKeybindRecording(!!pendingPageKeybind);
+    });
+  }
+
+  // Recording keybind recording
+  if (pageRecordingKeybindInput && pageRecordingKeybindDisplay) {
+    pageRecordingKeybindInput.addEventListener('click', () => {
+      if (!isRecordingPageRecordingKeybind) {
+        isRecordingPageRecordingKeybind = true;
+        pendingPageRecordingKeybind = null;
+        pageRecordingKeybindInput.classList.add('recording');
+        pageRecordingKeybindDisplay.textContent = 'Press keys...';
+        pageRecordingKeybindInput.focus();
+      }
+    });
+
+    pageRecordingKeybindInput.addEventListener('keydown', (e) => {
+      if (!isRecordingPageRecordingKeybind) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Handle Escape to cancel
+      if (e.key === 'Escape') {
+        stopPageRecordingKeybindRecording(false);
+        return;
+      }
+
+      // Handle Enter to confirm
+      if (e.key === 'Enter' && pendingPageRecordingKeybind) {
+        stopPageRecordingKeybindRecording(true);
+        return;
+      }
+
+      const result = keyEventToAccelerator(e);
+
+      // Update display to show current keys being pressed
+      if (result.accelerator) {
+        pageRecordingKeybindDisplay.textContent = formatKeybindForDisplay(result.accelerator);
+
+        // If we have a complete combo (modifier + key), store it as pending
+        if (result.isComplete) {
+          pendingPageRecordingKeybind = result.accelerator;
+        }
+      }
+    });
+
+    pageRecordingKeybindInput.addEventListener('blur', () => {
+      stopPageRecordingKeybindRecording(!!pendingPageRecordingKeybind);
+    });
+  }
+
+  // Persist history toggle
+  if (pagePersistHistoryCheckbox) {
+    pagePersistHistoryCheckbox.addEventListener('change', () => {
+      savePagePersistHistory(pagePersistHistoryCheckbox.checked);
+    });
+  }
+
+  // Dictionary input
+  if (pageDictionaryInput) {
+    pageDictionaryInput.addEventListener('input', savePageTranscriptionSettings);
+  }
+
+  // LLM correction toggle
+  if (pageLlmCorrectionToggle) {
+    pageLlmCorrectionToggle.addEventListener('change', () => {
+      updatePageLLMUIState();
+      savePageTranscriptionSettings();
+    });
+  }
+
+  // LLM prompt input
+  if (pageLlmPromptInput) {
+    pageLlmPromptInput.addEventListener('input', savePageTranscriptionSettings);
+  }
+}
+
+// Stop spotlight keybind recording
+async function stopPageKeybindRecording(save: boolean) {
+  const pageKeybindInput = $('page-keybind-input');
+  const pageKeybindDisplay = $('page-keybind-display');
+
+  if (!isRecordingPageKeybind || !pageKeybindInput || !pageKeybindDisplay) return;
+
+  isRecordingPageKeybind = false;
+  pageKeybindInput.classList.remove('recording');
+
+  if (save && pendingPageKeybind) {
+    await savePageKeybind(pendingPageKeybind, false);
+    pageKeybindDisplay.textContent = formatKeybindForDisplay(pendingPageKeybind);
+  } else {
+    // Restore previous value
+    const settings = await window.claude.getSettings() as any;
+    if (settings?.spotlightKeybind) {
+      pageKeybindDisplay.textContent = formatKeybindForDisplay(settings.spotlightKeybind);
+    }
+  }
+
+  pendingPageKeybind = null;
+}
+
+// Stop recording keybind recording
+async function stopPageRecordingKeybindRecording(save: boolean) {
+  const pageRecordingKeybindInput = $('page-recording-keybind-input');
+  const pageRecordingKeybindDisplay = $('page-recording-keybind-display');
+
+  if (!isRecordingPageRecordingKeybind || !pageRecordingKeybindInput || !pageRecordingKeybindDisplay) return;
+
+  isRecordingPageRecordingKeybind = false;
+  pageRecordingKeybindInput.classList.remove('recording');
+
+  if (save && pendingPageRecordingKeybind) {
+    await savePageKeybind(pendingPageRecordingKeybind, true);
+    pageRecordingKeybindDisplay.textContent = formatKeybindForDisplay(pendingPageRecordingKeybind);
+  } else {
+    // Restore previous value
+    const settings = await window.claude.getSettings() as any;
+    if (settings?.recordingKeybind) {
+      pageRecordingKeybindDisplay.textContent = formatKeybindForDisplay(settings.recordingKeybind);
+    }
+  }
+
+  pendingPageRecordingKeybind = null;
 }
 
 function saveNote(text: string) {
@@ -2380,6 +2832,66 @@ async function toggleNotesRecording() {
   }
 }
 
+// Dictionary page functions
+async function loadDictionarySettings() {
+  try {
+    const settings = await window.claude.getSettings();
+    const textarea = $('dictionary-textarea') as HTMLTextAreaElement;
+    if (textarea && settings) {
+      textarea.value = dictionaryToString(settings.dictionary);
+    }
+  } catch (error) {
+    console.error('Failed to load dictionary settings:', error);
+  }
+}
+
+async function saveDictionarySettings() {
+  try {
+    const textarea = $('dictionary-textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      const dictionary = stringToDictionary(textarea.value);
+      await window.claude.saveSettings({ dictionary });
+      console.log('Dictionary settings saved successfully!');
+
+      // Show a brief success indicator
+      const saveBtn = $('dictionary-save-btn');
+      if (saveBtn) {
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Saved!';
+        saveBtn.style.background = '#4CAF50';
+        setTimeout(() => {
+          saveBtn.textContent = originalText || 'Save Changes';
+          saveBtn.style.background = '';
+        }, 2000);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save dictionary settings:', error);
+    alert('Failed to save dictionary settings');
+  }
+}
+
+function setupDictionaryEventListeners() {
+  // Dictionary save button
+  $('dictionary-save-btn')?.addEventListener('click', saveDictionarySettings);
+
+  // Dictionary reset button
+  $('dictionary-reset-btn')?.addEventListener('click', () => {
+    const textarea = $('dictionary-textarea') as HTMLTextAreaElement;
+    if (textarea && confirm('Are you sure you want to reset the dictionary?')) {
+      loadDictionarySettings();
+    }
+  });
+
+  // View Dictionary button in home page sidebar
+  const viewDictionaryBtn = $('view-dictionary-btn');
+  viewDictionaryBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log('View Dictionary button clicked!');
+    showDictionaryPage();
+  });
+}
+
 function setupNotesEventListeners() {
   // Notes finish button - save and clear textarea, then refresh list
   $('notes-finish-btn')?.addEventListener('click', () => {
@@ -2422,11 +2934,14 @@ function setupNotesEventListeners() {
 // Make functions globally accessible for navigation
 (window as any).showNotesPage = showNotesPage;
 (window as any).showHomePage = showHomePage;
+(window as any).showSettingsPage = showSettingsPage;
 
 // Start the app
 init();
 setupEventListeners();
 setupNotesEventListeners();
+setupDictionaryEventListeners();
+setupSettingsEventListeners();
 renderAttachmentList();
 renderTranscriptionHistory();
 updateFlowStats();

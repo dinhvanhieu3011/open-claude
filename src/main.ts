@@ -20,6 +20,7 @@ let recordingOverlay: BrowserWindow | null = null;
 const DEFAULT_SETTINGS: SettingsSchema = {
   spotlightKeybind: 'CommandOrControl+Shift+C',
   spotlightPersistHistory: true,
+  recordingKeybind: 'CommandOrControl+K',
 };
 
 // Get settings with defaults
@@ -39,6 +40,7 @@ function registerGlobalShortcuts() {
   globalShortcut.unregisterAll();
   const settings = getSettings();
   const keybind = settings.spotlightKeybind || DEFAULT_SETTINGS.spotlightKeybind;
+  const recordingKeybind = settings.recordingKeybind || DEFAULT_SETTINGS.recordingKeybind;
 
   // Spotlight shortcut
   try {
@@ -52,14 +54,25 @@ function registerGlobalShortcuts() {
     });
   }
 
-  // Global voice recording shortcut - Ctrl+K (press to start, press again to stop)
-  globalShortcut.register('CommandOrControl+K', () => {
-    if (isGlobalRecording) {
-      stopGlobalRecording();
-    } else {
-      startGlobalRecording();
-    }
-  });
+  // Global voice recording shortcut (press to start, press again to stop)
+  try {
+    globalShortcut.register(recordingKeybind, () => {
+      if (isGlobalRecording) {
+        stopGlobalRecording();
+      } else {
+        startGlobalRecording();
+      }
+    });
+  } catch (e) {
+    console.error('Failed to register recording keybind:', recordingKeybind, e);
+    globalShortcut.register(DEFAULT_SETTINGS.recordingKeybind, () => {
+      if (isGlobalRecording) {
+        stopGlobalRecording();
+      } else {
+        startGlobalRecording();
+      }
+    });
+  }
 }
 
 // Create recording overlay
@@ -831,8 +844,8 @@ ipcMain.handle('get-settings', async () => {
 
 ipcMain.handle('save-settings', async (_event, settings: Partial<SettingsSchema>) => {
   saveSettings(settings);
-  // Re-register shortcut if keybind changed
-  if (settings.spotlightKeybind !== undefined) {
+  // Re-register shortcuts if any keybind changed
+  if (settings.spotlightKeybind !== undefined || settings.recordingKeybind !== undefined) {
     registerGlobalShortcuts();
   }
   return getSettings();

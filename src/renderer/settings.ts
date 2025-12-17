@@ -5,6 +5,7 @@ const claude = (window as any).claude;
 interface Settings {
   spotlightKeybind: string;
   spotlightPersistHistory: boolean;
+  recordingKeybind: string;
   dictionary?: Record<string, string>;
   llmCorrectionEnabled?: boolean;
   llmCorrectionPrompt?: string;
@@ -13,6 +14,8 @@ interface Settings {
 // DOM Elements
 const keybindInput = document.getElementById('keybind-input') as HTMLElement;
 const keybindDisplay = document.getElementById('keybind-display') as HTMLElement;
+const recordingKeybindInput = document.getElementById('recording-keybind-input') as HTMLElement;
+const recordingKeybindDisplay = document.getElementById('recording-keybind-display') as HTMLElement;
 const persistHistoryCheckbox = document.getElementById('persist-history') as HTMLInputElement;
 const dictionaryInput = document.getElementById('dictionary-input') as HTMLTextAreaElement;
 const llmCorrectionToggle = document.getElementById('llm-correction-toggle') as HTMLInputElement;
@@ -20,8 +23,10 @@ const llmPromptInput = document.getElementById('llm-prompt-input') as HTMLTextAr
 const llmPromptContainer = document.getElementById('llm-prompt-container') as HTMLElement;
 
 let isRecordingKeybind = false;
+let isRecordingRecordingKeybind = false;
 let currentSettings: Settings | null = null;
 let pendingKeybind: string | null = null;
+let pendingRecordingKeybind: string | null = null;
 
 // Detect if we're on macOS
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -136,15 +141,16 @@ async function loadSettings() {
 
   if (currentSettings) {
     keybindDisplay.textContent = formatKeybind(currentSettings.spotlightKeybind);
+    recordingKeybindDisplay.textContent = formatKeybind(currentSettings.recordingKeybind);
     persistHistoryCheckbox.checked = currentSettings.spotlightPersistHistory;
-    
+
     // Load dictionary
     dictionaryInput.value = dictionaryToString(currentSettings.dictionary);
-    
+
     // Load LLM settings
     llmCorrectionToggle.checked = !!currentSettings.llmCorrectionEnabled;
     llmPromptInput.value = currentSettings.llmCorrectionPrompt || 'Fix grammar, punctuation, and capitalization. Return only the corrected text without any explanation.';
-    
+
     // Update UI state
     updateLLMUIState();
   }
@@ -166,6 +172,14 @@ async function saveKeybind(keybind: string) {
 
   currentSettings = await claude.saveSettings({ spotlightKeybind: keybind });
   keybindDisplay.textContent = formatKeybind(keybind);
+}
+
+// Save recording keybind
+async function saveRecordingKeybind(keybind: string) {
+  if (!currentSettings) return;
+
+  currentSettings = await claude.saveSettings({ recordingKeybind: keybind });
+  recordingKeybindDisplay.textContent = formatKeybind(keybind);
 }
 
 // Save persist history
@@ -205,6 +219,22 @@ function stopRecording(save: boolean) {
   }
 
   pendingKeybind = null;
+}
+
+// Stop recording and save if we have a valid recording keybind
+function stopRecordingRecordingKeybind(save: boolean) {
+  if (!isRecordingRecordingKeybind) return;
+
+  isRecordingRecordingKeybind = false;
+  recordingKeybindInput.classList.remove('recording');
+
+  if (save && pendingRecordingKeybind) {
+    saveRecordingKeybind(pendingRecordingKeybind);
+  } else if (currentSettings) {
+    recordingKeybindDisplay.textContent = formatKeybind(currentSettings.recordingKeybind);
+  }
+
+  pendingRecordingKeybind = null;
 }
 
 // Keybind recording
@@ -252,6 +282,53 @@ keybindInput.addEventListener('keydown', (e) => {
 keybindInput.addEventListener('blur', () => {
   // Save pending keybind on blur (clicking away)
   stopRecording(!!pendingKeybind);
+});
+
+// Recording keybind input
+recordingKeybindInput.addEventListener('click', () => {
+  if (!isRecordingRecordingKeybind) {
+    isRecordingRecordingKeybind = true;
+    pendingRecordingKeybind = null;
+    recordingKeybindInput.classList.add('recording');
+    recordingKeybindDisplay.textContent = 'Press keys...';
+    recordingKeybindInput.focus();
+  }
+});
+
+recordingKeybindInput.addEventListener('keydown', (e) => {
+  if (!isRecordingRecordingKeybind) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Handle Escape to cancel
+  if (e.key === 'Escape') {
+    stopRecordingRecordingKeybind(false);
+    return;
+  }
+
+  // Handle Enter to confirm
+  if (e.key === 'Enter' && pendingRecordingKeybind) {
+    stopRecordingRecordingKeybind(true);
+    return;
+  }
+
+  const result = keyEventToAccelerator(e);
+
+  // Update display to show current keys being pressed
+  if (result.accelerator) {
+    recordingKeybindDisplay.textContent = formatKeybind(result.accelerator);
+
+    // If we have a complete combo (modifier + key), store it as pending
+    if (result.isComplete) {
+      pendingRecordingKeybind = result.accelerator;
+    }
+  }
+});
+
+recordingKeybindInput.addEventListener('blur', () => {
+  // Save pending keybind on blur (clicking away)
+  stopRecordingRecordingKeybind(!!pendingRecordingKeybind);
 });
 
 // Persist history toggle

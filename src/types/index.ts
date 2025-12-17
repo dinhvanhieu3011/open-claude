@@ -2,6 +2,7 @@
 export interface SettingsSchema {
   spotlightKeybind: string;
   spotlightPersistHistory: boolean;
+  recordingKeybind: string;
   dictionary?: Record<string, string>;
   llmCorrectionEnabled?: boolean;
   llmCorrectionPrompt?: string;

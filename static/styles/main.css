@@ -867,28 +867,6 @@
       margin: 12px 0;
     }
 
-    /* Citation styling */
-    .citation-link {
-      color: #CC785C;
-      text-decoration: underline;
-      text-decoration-style: dotted;
-      text-underline-offset: 2px;
-    }
-    .citation-link:hover {
-      text-decoration-style: solid;
-    }
-    .citation-num {
-      font-size: 10px;
-      color: #CC785C;
-      font-weight: 600;
-      vertical-align: super;
-      margin-left: 1px;
-      cursor: pointer;
-    }
-    .citation-num:hover {
-      text-decoration: underline;
-    }
-
     /* Input area */
     .input-area {
       padding: 16px 20px 20px;
@@ -1681,6 +1659,4 @@
         color: rgba(255, 255, 255, 0.6);
       }
       .tool-output.error { background: rgba(255, 69, 58, 0.15); }
-      .citation-link { color: #E8C4A0; }
-      .citation-num { color: #E8C4A0; }
     }

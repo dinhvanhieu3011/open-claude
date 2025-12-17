@@ -6,7 +6,9 @@ import type { StoreSchema, ApiResponse, AttachmentPayload, UploadFilePayload } f
 const BASE_URL = 'https://chatgpt.com';
 
 // Store instance
-const store = new Store<StoreSchema>() as Store<StoreSchema> & {
+const store = new Store<StoreSchema>({
+  projectName: 'open-claude'
+}) as Store<StoreSchema> & {
   get<K extends keyof StoreSchema>(key: K): StoreSchema[K];
   set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void;
   delete<K extends keyof StoreSchema>(key: K): void;

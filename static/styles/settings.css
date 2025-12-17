@@ -7,7 +7,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: transparent;
-  color: #1a1a1a;
+  color: #000;
   overflow: hidden;
 }
 
@@ -28,7 +28,7 @@ body {
 .settings-header h1 {
   font-size: 20px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #000;
 }
 
 .settings-content {
@@ -56,7 +56,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(0, 0, 0, 0.5);
+  color: #000;
   margin-bottom: 16px;
 }
 
@@ -77,6 +77,11 @@ body {
   padding-top: 0;
 }
 
+.setting-item.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .setting-info {
   flex: 1;
 }
@@ -85,13 +90,13 @@ body {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #1a1a1a;
+  color: #000;
   margin-bottom: 2px;
 }
 
 .setting-description {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.5);
+  color: #000;
 }
 
 /* Keybind input */
@@ -134,7 +139,7 @@ body {
 .keybind-display {
   font-size: 13px;
   font-weight: 500;
-  color: #1a1a1a;
+  color: #000;
   font-family: 'SF Mono', Menlo, monospace;
 }
 
@@ -150,6 +155,33 @@ body {
 
 .keybind-input.recording .keybind-display {
   color: #CC785C;
+}
+
+/* Textarea */
+.setting-textarea {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'SF Mono', Menlo, monospace;
+  color: #000;
+  resize: vertical;
+  min-height: 80px;
+  transition: all 0.15s;
+}
+
+.setting-textarea:focus {
+  outline: none;
+  background: #fff;
+  border-color: #CC785C;
+  box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
+}
+
+.setting-textarea::placeholder {
+  color: rgba(0, 0, 0, 0.35);
 }
 
 /* Toggle switch */
@@ -218,12 +250,12 @@ body {
 
 .about-label {
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.6);
+  color: #000;
 }
 
 .about-value {
   font-size: 14px;
-  color: #1a1a1a;
+  color: #000;
   font-family: 'SF Mono', Menlo, monospace;
 }
 
@@ -298,5 +330,19 @@ body {
 
   .about-value {
     color: #f0f0f0;
+  }
+
+  .setting-textarea {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
+  }
+
+  .setting-textarea:focus {
+    background: rgba(204, 120, 92, 0.15);
+  }
+
+  .setting-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.35);
   }
 }

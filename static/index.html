@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data:;">
-  <title>Open Claude</title>
+  <title>Free Wispr Flow</title>
   <style>
     * {
       margin: 0;
@@ -17,12 +17,12 @@
     html,
     body {
       height: 100%;
-      background: transparent;
+      background: #fff;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-      color: #000;
+      color: #1a1a1a;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -30,6 +30,12 @@
     }
 
     @media (prefers-color-scheme: dark) {
+
+      html,
+      body {
+        background: #1a1a1a;
+      }
+
       body {
         color: #fff;
       }
@@ -42,19 +48,20 @@
       justify-content: center;
       height: 100vh;
       padding: 40px;
+      background: #f5f5f5;
     }
 
     .login-card {
-      background: rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(80px) saturate(200%);
       -webkit-backdrop-filter: blur(80px) saturate(200%);
-      border: 1px solid rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.08);
       border-radius: 20px;
       padding: 44px 52px;
       text-align: center;
       max-width: 320px;
       width: 100%;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
     }
 
     .logo {
@@ -74,12 +81,33 @@
       font-weight: 600;
       letter-spacing: -0.4px;
       margin-bottom: 6px;
+      color: #1a1a1a;
     }
 
     .login-container .subtitle {
       color: rgba(0, 0, 0, 0.5);
       font-size: 14px;
       margin-bottom: 28px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .login-container {
+        background: #ffffff;
+      }
+
+      .login-card {
+        background: rgba(60, 60, 60, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      .login-container h1 {
+        color: #000000;
+      }
+
+      .login-container .subtitle {
+        color: rgba(0, 0, 0, 0.6);
+      }
     }
 
     .login-btn {
@@ -130,6 +158,34 @@
       align-items: center;
       justify-content: center;
       padding: 40px 20px;
+    }
+
+    /* Home content trong flow-main có padding giống notes và settings */
+    #home-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    #home-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    #home-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Xóa margin của flow-header khi nằm trong #home-content vì đã có gap */
+    #home-content .flow-header {
+      margin-bottom: 0;
+      margin-top: 0;
     }
 
     /* Draggable header area for home page */
@@ -2076,7 +2132,7 @@
       }
 
       .login-container .subtitle {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(0, 0, 0, 0.5);
       }
 
       /* Home page dark mode */
@@ -3272,15 +3328,615 @@
         color: rgba(243, 17, 17, 0.7);
       }
     }
+
+    /* Dictionary Page Styles */
+    .dictionary-page-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      background: transparent;
+    }
+
+    .dictionary-page-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .dictionary-page-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .dictionary-header-section {
+      flex-shrink: 0;
+    }
+
+    .dictionary-page-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.9);
+      margin: 0 0 8px 0;
+    }
+
+    .dictionary-page-subtitle {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      margin: 0;
+    }
+
+    .dictionary-input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dictionary-input-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .dictionary-input-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dictionary-input-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    .dictionary-input-hint {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+    }
+
+    .dictionary-textarea {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+      line-height: 1.6;
+      color: rgba(0, 0, 0, 0.8);
+      background: rgba(255, 255, 255, 0.6);
+      resize: vertical;
+      min-height: 300px;
+      transition: all 0.2s;
+    }
+
+    .dictionary-textarea:focus {
+      outline: none;
+      border-color: #CC785C;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .dictionary-textarea::placeholder {
+      color: rgba(0, 0, 0, 0.3);
+    }
+
+    .dictionary-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .dictionary-save-btn,
+    .dictionary-reset-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dictionary-save-btn {
+      background: #CC785C;
+      color: white;
+    }
+
+    .dictionary-save-btn:hover {
+      background: #b56a4f;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(204, 120, 92, 0.3);
+    }
+
+    .dictionary-save-btn:active {
+      transform: scale(0.98);
+    }
+
+    .dictionary-reset-btn {
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .dictionary-reset-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: rgba(0, 0, 0, 0.8);
+    }
+
+    .dictionary-reset-btn:active {
+      transform: scale(0.98);
+    }
+
+    .dictionary-info-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .dictionary-info-card {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .dictionary-info-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      background: rgba(204, 120, 92, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #CC785C;
+    }
+
+    .dictionary-info-content {
+      flex: 1;
+    }
+
+    .dictionary-info-content h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.8);
+      margin: 0 0 8px 0;
+    }
+
+    .dictionary-info-content p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(0, 0, 0, 0.6);
+      margin: 0;
+    }
+
+    .dictionary-info-content ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .dictionary-info-content li {
+      font-size: 13px;
+      line-height: 1.8;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .dictionary-info-content code {
+      background: rgba(0, 0, 0, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dictionary-page-title {
+        color: #1a1a1a;
+      }
+
+      .dictionary-page-subtitle,
+      .dictionary-input-hint {
+        color: #1a1a1a;
+      }
+
+      .dictionary-input-label {
+        color: #1a1a1a;
+      }
+
+      .dictionary-textarea {
+        background: rgba(40, 40, 40, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .dictionary-textarea:focus {
+        background: rgba(50, 50, 50, 0.8);
+        border-color: #CC785C;
+      }
+
+      .dictionary-textarea::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      .dictionary-reset-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .dictionary-reset-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .dictionary-info-card {
+        background: rgba(40, 40, 40, 0.6);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+
+      .dictionary-info-content h4 {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .dictionary-info-content p,
+      .dictionary-info-content li {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .dictionary-info-content code {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+      }
+    }
+
+    /* Settings Page Styles */
+    .settings-page-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      background: transparent;
+    }
+
+    .settings-page-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    .settings-page-content {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .settings-header-section {
+      flex-shrink: 0;
+    }
+
+    .settings-page-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+
+    .settings-main-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-page-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .settings-section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 0;
+      border: 1px solid #EAEAEA;
+      overflow: hidden;
+    }
+
+    .settings-section h2 {
+      font-size: 11px;
+      font-weight: 700;
+      color: #AAA;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 0;
+      padding: 16px 24px;
+      background: #FAFAFA;
+      border-bottom: 1px solid #EAEAEA;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      background: #fff;
+      border-bottom: 1px solid #F4F4F4;
+      transition: background 0.1s;
+    }
+
+    .setting-item:last-child {
+      border-bottom: none;
+    }
+
+    .setting-item:hover {
+      background: #FAFAFA;
+    }
+
+    .setting-item.vertical {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .setting-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .setting-info label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .setting-description {
+      font-size: 12px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    /* Toggle Switch */
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #E5E5E5;
+      transition: 0.2s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .toggle input:checked+.toggle-slider {
+      background-color: #2D2D2D;
+    }
+
+    .toggle input:checked+.toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Keybind Input */
+    .keybind-input {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: #FAFAFA;
+      border: 1px solid #EAEAEA;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 180px;
+      justify-content: space-between;
+    }
+
+    .keybind-input:hover {
+      background: #F4F4F4;
+      border-color: #D0D0D0;
+    }
+
+    .keybind-input:focus {
+      outline: none;
+      border-color: #2D2D2D;
+      background: #fff;
+    }
+
+    .keybind-display {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+    .keybind-hint {
+      font-size: 11px;
+      color: #AAA;
+    }
+
+    /* Textarea */
+    .setting-textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #EAEAEA;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      background: #FAFAFA;
+      color: #333;
+      transition: all 0.15s;
+      line-height: 1.5;
+    }
+
+    .setting-textarea:focus {
+      outline: none;
+      border-color: #2D2D2D;
+      background: #fff;
+    }
+
+    .setting-textarea::placeholder {
+      color: #AAA;
+    }
+
+    /* About Section */
+    .about-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .about-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0;
+    }
+
+    .about-label {
+      font-size: 14px;
+      color: #999;
+    }
+
+    .about-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .settings-page-title {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .settings-section {
+        background: #1a1a1a;
+        border-color: #2a2a2a;
+      }
+
+      .settings-section h2 {
+        color: #888;
+        background: #0f0f0f;
+        border-bottom-color: #2a2a2a;
+      }
+
+      .setting-item {
+        background: #1a1a1a;
+        border-bottom-color: #252525;
+      }
+
+      .setting-item:hover {
+        background: #202020;
+      }
+
+      .setting-info label {
+        color: #e0e0e0;
+      }
+
+      .setting-description {
+        color: #888;
+      }
+
+      .toggle-slider {
+        background-color: #3a3a3a;
+      }
+
+      .toggle input:checked+.toggle-slider {
+        background-color: #fff;
+      }
+
+      .toggle-slider:before {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+
+      .toggle input:checked+.toggle-slider:before {
+        background-color: #1a1a1a;
+      }
+
+      .keybind-input {
+        background: #0f0f0f;
+        border-color: #2a2a2a;
+      }
+
+      .keybind-input:hover {
+        background: #252525;
+        border-color: #3a3a3a;
+      }
+
+      .keybind-input:focus {
+        border-color: #fff;
+        background: #1a1a1a;
+      }
+
+      .keybind-display {
+        color: #e0e0e0;
+      }
+
+      .keybind-hint {
+        color: #666;
+      }
+
+      .setting-textarea {
+        background: #0f0f0f;
+        border-color: #2a2a2a;
+        color: #e0e0e0;
+      }
+
+      .setting-textarea:focus {
+        border-color: #fff;
+        background: #1a1a1a;
+      }
+
+      .setting-textarea::placeholder {
+        color: #666;
+      }
+
+      .about-label {
+        color: #888;
+      }
+
+      .about-value {
+        color: #e0e0e0;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <div id="login" class="login-container">
+  <div id="login" class="login-container" style="display: none;">
     <div class="login-card">
       <div class="logo"><img src="logo.svg" alt="Logo"></div>
-      <h1>Open Chatgpt</h1>
-      <p class="subtitle">Sign in to continue</p>
+      <h1>Free Wispr Flow</h1>
+      <p class="subtitle">Đăng nhập bằng Chatgpt</p>
       <button class="login-btn" id="login-btn">Continue</button>
       <p id="login-error" class="error"></p>
     </div>
@@ -3342,7 +3998,7 @@
           </span>
           Home
         </a>
-        <a class="flow-nav-item">
+        <a class="flow-nav-item" id="view-dictionary-btn" style="cursor: pointer;">
           <span class="flow-nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
@@ -3387,7 +4043,7 @@
       </div>
 
       <div class="flow-bottom-links">
-        <a class="flow-nav-item">
+        <a class="flow-nav-item" id="home-settings-btn">
           <span class="flow-nav-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="3"></circle>
@@ -3407,6 +4063,16 @@
             </svg>
           </span>
           Help
+        </a>
+        <a class="flow-nav-item" id="logout-btn">
+          <span class="flow-nav-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </span>
+          Logout
         </a>
       </div>
     </aside>
@@ -3469,6 +4135,62 @@
         </div>
       </div>
 
+      <!-- Dictionary Content -->
+      <div id="dictionary-content" class="dictionary-page-content" style="display: none;">
+        <div class="dictionary-header-section">
+          <h3 class="dictionary-page-title">Manage your custom dictionary replacements</h3>
+          <p class="dictionary-page-subtitle">Replace words or expand abbreviations during transcription</p>
+        </div>
+
+        <div class="dictionary-input-section">
+          <div class="dictionary-input-wrapper">
+            <div class="dictionary-input-header">
+              <label class="dictionary-input-label">Dictionary Entries</label>
+              <span class="dictionary-input-hint">Format: key=value (one per line)</span>
+            </div>
+            <textarea class="dictionary-textarea" id="dictionary-textarea"
+              placeholder="brb=be right back&#10;omg=oh my god&#10;btw=by the way&#10;asap=as soon as possible"
+              rows="15"></textarea>
+          </div>
+          <div class="dictionary-actions">
+            <button class="dictionary-save-btn" id="dictionary-save-btn">Save Changes</button>
+            <button class="dictionary-reset-btn" id="dictionary-reset-btn">Reset</button>
+          </div>
+        </div>
+
+        <div class="dictionary-info-section">
+          <div class="dictionary-info-card">
+            <div class="dictionary-info-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </div>
+            <div class="dictionary-info-content">
+              <h4>How it works</h4>
+              <p>When you transcribe audio, any word matching a key in your dictionary will be automatically replaced
+                with its corresponding value.</p>
+            </div>
+          </div>
+          <div class="dictionary-info-card">
+            <div class="dictionary-info-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <div class="dictionary-info-content">
+              <h4>Examples</h4>
+              <ul>
+                <li><code>brb=be right back</code></li>
+                <li><code>omg=oh my god</code></li>
+                <li><code>imo=in my opinion</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Notes Content (toggled with home content) -->
       <div id="notes-content" class="notes-page-content" style="display: none;">
         <div class="notes-header-section">
@@ -3523,64 +4245,91 @@
           </div>
         </div>
       </div>
-    </main>
 
-    <!-- Hidden input to prevent JS errors if main.ts tries to access it -->
-    <textarea id="home-input" style="display:none;"></textarea>
+      <!-- Settings Content (similar to notes-content) -->
+      <div id="settings-content" class="settings-page-content" style="display: none;">
+        <div class="settings-header-section">
+          <h3 class="settings-page-title">Settings</h3>
+        </div>
+
+        <div class="settings-main-section">
+          <div class="settings-page-sections">
+            <!-- Spotlight Section -->
+            <div class="settings-section">
+              <h2>Spotlight</h2>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label>Keyboard Shortcut</label>
+                  <span class="setting-description">Global shortcut to open spotlight</span>
+                </div>
+                <div class="keybind-input" id="page-keybind-input" tabindex="0">
+                  <span class="keybind-display" id="page-keybind-display">⌘ + Shift + Space</span>
+                  <span class="keybind-hint">Click to change</span>
+                </div>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label>Persist History</label>
+                  <span class="setting-description">Keep spotlight chat history after closing</span>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="page-persist-history">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Recording Section -->
+            <div class="settings-section">
+              <h2>Recording</h2>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label>Keyboard Shortcut</label>
+                  <span class="setting-description">Global shortcut to start/stop recording</span>
+                </div>
+                <div class="keybind-input" id="page-recording-keybind-input" tabindex="0">
+                  <span class="keybind-display" id="page-recording-keybind-display">⌘ + K</span>
+                  <span class="keybind-hint">Click to change</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transcription Section -->
+            <div class="settings-section">
+              <h2>Transcription</h2>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <label>LLM Correction</label>
+                  <span class="setting-description">Use Claude to clean up grammar and context</span>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="page-llm-correction-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item vertical" id="page-llm-prompt-container">
+                <div class="setting-info">
+                  <label>Correction Prompt</label>
+                  <span class="setting-description">Instructions for the LLM</span>
+                </div>
+                <textarea id="page-llm-prompt-input" class="setting-textarea" rows="3"
+                  placeholder="Fix grammar and punctuation. Keep it concise."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
   </div>
+  </main>
 
-  <div id="chat" class="chat-container">
-    <!-- Header -->
-    <div class="header">
-      <div class="header-left">
-        <!-- Icons removed - using sidebar tab instead -->
-      </div>
-      <div class="header-right">
-        <button class="icon-btn" id="export-btn" title="Export to Markdown">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-        </button>
-        <span class="model-badge">Opus 4.5</span>
-        <button class="sign-out-btn" id="chat-logout-btn">Sign Out</button>
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div id="messages" class="messages">
-      <div class="empty-state" id="empty-state">
-        <div class="empty-state-icon">✦</div>
-        <p>What can I help with?</p>
-        <span class="hint">Claude is ready</span>
-      </div>
-    </div>
-
-    <!-- Input -->
-    <div class="input-area">
-      <div class="input-wrapper">
-        <button class="attach-btn" id="attach-btn" title="Attach files">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
-            </path>
-          </svg>
-        </button>
-        <textarea id="input" placeholder="Message Claude..." rows="1"></textarea>
-        <button class="send-btn" id="send-btn">↑</button>
-        <button class="stop-btn" id="stop-btn">■</button>
-      </div>
-      <div class="attachment-container" id="attachment-container">
-        <div class="attachment-list" id="attachment-list"></div>
-        <div class="attachment-status" id="attachment-status"></div>
-      </div>
-    </div>
+  <!-- Hidden input to prevent JS errors if main.ts tries to access it -->
+  <textarea id="home-input" style="display:none;"></textarea>
   </div>
-
-  <input type="file" id="file-input" multiple accept="*/*" style="display:none" />
 
   <!-- Notes Page -->
   <div id="notes" class="notes-container" style="display: none;">
@@ -3633,7 +4382,7 @@
       </div>
 
       <div class="flow-bottom-links">
-        <a class="flow-nav-item">
+        <a class="flow-nav-item" id="notes-settings-btn">
           <span class="flow-nav-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="3"></circle>
