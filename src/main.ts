@@ -1,8 +1,5 @@
 import { app, BrowserWindow, ipcMain, session, globalShortcut, screen, dialog, clipboard, net } from 'electron';
-
-
 import { exec } from 'child_process';
-import { keyboard, Key } from '@nut-tree-fork/nut-js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -10,6 +7,39 @@ import { isAuthenticated, getOrgId, makeRequest, store, BASE_URL, transcribeAudi
 import { createStreamState, processSSEChunk, type StreamCallbacks } from './streaming/parser';
 import type { SettingsSchema, AttachmentPayload, UploadFilePayload } from './types';
 import { audioDuckingManager } from './audio/ducking';
+
+// Setup file logging
+const logsDir = path.join(app.getPath('userData'), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+const logFilePath = path.join(logsDir, `ff-${new Date().toISOString().split('T')[0]}.log`);
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
+// Override console methods to also write to file
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+
+console.log = (...args: any[]) => {
+  const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  logStream.write(`[LOG] ${new Date().toISOString()} ${message}\n`);
+  originalLog(...args);
+};
+
+console.error = (...args: any[]) => {
+  const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  logStream.write(`[ERROR] ${new Date().toISOString()} ${message}\n`);
+  originalError(...args);
+};
+
+console.warn = (...args: any[]) => {
+  const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+  logStream.write(`[WARN] ${new Date().toISOString()} ${message}\n`);
+  originalWarn(...args);
+};
+
+console.log('[Logging] Log file:', logFilePath);
 
 let mainWindow: BrowserWindow | null = null;
 let spotlightWindow: BrowserWindow | null = null;
@@ -78,9 +108,11 @@ function registerGlobalShortcuts() {
 // Create recording overlay
 function createRecordingOverlay() {
   if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+    console.log('[DEBUG] Recording overlay already exists');
     return;
   }
 
+  console.log('[DEBUG] Creating recording overlay');
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
@@ -95,7 +127,10 @@ function createRecordingOverlay() {
     skipTaskbar: true,
     resizable: false,
     movable: false,
-    focusable: false, // Prevent checking stealing focus
+    focusable: false, // Prevent window from stealing focus
+    hasShadow: false,
+    acceptFirstMouse: false,
+    show: false, // Don't show immediately to prevent activation
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -109,6 +144,23 @@ function createRecordingOverlay() {
 
   recordingOverlay.setIgnoreMouseEvents(true);
   recordingOverlay.loadFile(path.join(__dirname, '../static/recording-overlay.html'));
+
+  // Show window after load to prevent app activation
+  recordingOverlay.once('ready-to-show', () => {
+    if (recordingOverlay) {
+      recordingOverlay.showInactive(); // Show without activating/focusing
+      console.log('[DEBUG] Recording overlay shown (inactive)');
+    }
+  });
+
+  recordingOverlay.on('closed', () => {
+    console.log('[DEBUG] Recording overlay closed event triggered');
+    recordingOverlay = null;
+  });
+
+  recordingOverlay.on('close', () => {
+    console.log('[DEBUG] Recording overlay close event triggered');
+  });
 }
 
 // Global recording state
@@ -217,6 +269,15 @@ function createMainWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../static/index.html'));
+
+  mainWindow.on('closed', () => {
+    console.log('[DEBUG] Main window closed event triggered');
+    mainWindow = null;
+  });
+
+  mainWindow.on('close', () => {
+    console.log('[DEBUG] Main window close event triggered');
+  });
 }
 
 // Create settings window
@@ -579,6 +640,7 @@ ipcMain.handle('export-conversation-markdown', async (_event, conversationData: 
 ipcMain.handle('transcribe-audio', async (_event, audioData: ArrayBuffer, fileName?: string) => {
   try {
     const buffer = Buffer.from(audioData);
+    console.log('[Transcribe] Audio buffer size:', buffer.length, 'bytes');
     const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'auto');
     return result;
   } catch (error) {
@@ -726,9 +788,18 @@ ipcMain.handle('global-recording-complete', async (_event, audioData: ArrayBuffe
     audioDuckingManager.stop();
 
     const buffer = Buffer.from(audioData);
+    console.log('[Global Recording] Audio buffer size:', buffer.length, 'bytes');
+
+    if (buffer.length === 0) {
+      console.error('[Global Recording] Audio buffer is empty! No audio was recorded.');
+      throw new Error('No audio data recorded');
+    }
+
     console.time('[Transcribe] API Call');
     const result = await transcribeAudio(buffer, fileName || 'audio.webm', 'auto');
     console.timeEnd('[Transcribe] API Call');
+
+    console.log('[Global Recording] Transcription result length:', result.text.length);
     let finalKey = result.text;
 
     // 1. Dictionary Replacement
@@ -759,46 +830,67 @@ ipcMain.handle('global-recording-complete', async (_event, audioData: ArrayBuffe
       console.log('[Global Recording] Sent to main window history');
     }
 
-    // Auto-paste using nut.js (simulate Ctrl+V)
-    setTimeout(async () => {
+    // Auto-paste using system commands
+    setTimeout(() => {
+      console.log('[Global Recording] Starting auto-paste...');
       try {
-        // Small delay to ensure clipboard is ready
-        const isMac = process.platform === 'darwin';
-        const modifier = isMac ? Key.LeftSuper : Key.LeftControl;
+        if (process.platform === 'darwin') {
+          // Try multiple methods for maximum compatibility
+          // Method 1: Use osascript with System Events (requires Accessibility permission)
+          const cmd = `osascript -e 'tell application "System Events" to keystroke "v" using command down'`;
 
-        await keyboard.pressKey(modifier, Key.V);
-        await keyboard.releaseKey(modifier, Key.V);
+          exec(cmd, (error, stdout, stderr) => {
+            if (error) {
+              console.error('[Global Recording] AppleScript paste failed:', error.message);
+              if (stderr) console.error('[Global Recording] stderr:', stderr);
 
-        console.log('[Global Recording] Auto-pasted to active window');
-      } catch (error) {
-        console.error('[Global Recording] Auto-paste failed:', error);
-        // Fallback to system command if nut.js fails
-        try {
-          console.log('[Global Recording] nut.js failed, attempting system fallback...');
-          if (process.platform === 'darwin') {
-            exec(`osascript -e 'tell application "System Events" to keystroke "v" using command down'`, (error) => {
-              if (error) console.error('[Global Recording] Mac paste fallback failed:', error);
-            });
-          } else if (process.platform === 'win32') {
-            const psCommand = "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^v')";
-            exec(`powershell -NoProfile -WindowStyle Hidden -Command "${psCommand}"`, (error) => {
-              if (error) console.error('[Global Recording] Windows paste fallback failed:', error);
-            });
-          }
-        } catch (fallbackError) {
-          console.error('[Global Recording] Fallback failed:', fallbackError);
+              // Fallback: Try direct keystroke without System Events wrapper
+              console.log('[Global Recording] Trying fallback paste method...');
+              exec(`osascript -e 'tell application "System Events"' -e 'keystroke "v" using command down' -e 'end tell'`, (err2) => {
+                if (err2) {
+                  console.error('[Global Recording] Fallback paste also failed:', err2.message);
+                  console.error('[Global Recording] Please enable Accessibility permission for Open Claude in System Settings');
+                } else {
+                  console.log('[Global Recording] Auto-pasted successfully (fallback)');
+                }
+              });
+            } else {
+              console.log('[Global Recording] Auto-pasted successfully');
+              if (stdout) console.log('[Global Recording] stdout:', stdout);
+            }
+          });
+        } else if (process.platform === 'win32') {
+          // Use PowerShell on Windows
+          const psCommand = "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^v')";
+          exec(`powershell -NoProfile -WindowStyle Hidden -Command "${psCommand}"`, (error) => {
+            if (error) {
+              console.error('[Global Recording] Auto-paste failed:', error);
+            } else {
+              console.log('[Global Recording] Auto-pasted successfully');
+            }
+          });
+        } else {
+          // Linux - use xdotool if available
+          exec('xdotool key ctrl+v', (error) => {
+            if (error) console.error('[Global Recording] Auto-paste failed:', error);
+            else console.log('[Global Recording] Auto-pasted successfully');
+          });
         }
+      } catch (error) {
+        console.error('[Global Recording] Auto-paste exception:', error);
       }
-    }, 100);
+    }, 200); // Increased delay to ensure clipboard is ready
 
-    // Close overlay
+    // Close overlay after paste completes
     if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+      console.log('[DEBUG] Scheduling overlay close in 1000ms (after paste)');
       setTimeout(() => {
         if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+          console.log('[DEBUG] Closing overlay after delay');
           recordingOverlay.close();
           recordingOverlay = null;
         }
-      }, 800);
+      }, 1000); // Increased to 1000ms to ensure paste completes first
     }
 
     return result;
@@ -851,12 +943,26 @@ ipcMain.handle('save-settings', async (_event, settings: Partial<SettingsSchema>
   return getSettings();
 });
 
+// Get logs directory path
+ipcMain.handle('get-logs-path', async () => {
+  return logsDir;
+});
+
+// Open logs folder
+ipcMain.handle('open-logs-folder', async () => {
+  exec(`open "${logsDir}"`);
+});
+
+// Disable sudden termination to prevent macOS from killing the app
+console.log('[DEBUG] Disabling sudden termination');
+
 // Handle deep link on Windows (single instance)
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
+    console.log('[DEBUG] Second instance detected');
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -864,15 +970,27 @@ if (!gotTheLock) {
   });
 }
 
+// Add before-quit handler to log when app is about to quit
+app.on('before-quit', (event) => {
+  console.log('[DEBUG] before-quit event triggered');
+  console.log('[DEBUG] Main window exists:', !!mainWindow);
+  console.log('[DEBUG] Overlay exists:', !!recordingOverlay);
+});
+
 app.whenReady().then(() => {
+  console.log('[DEBUG] App ready');
+
   createMainWindow();
 
   // Register global shortcuts
   registerGlobalShortcuts();
 
   app.on('activate', () => {
+    console.log('[DEBUG] App activated');
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
     }
   });
 });
@@ -883,7 +1001,30 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
+  console.log('[DEBUG] window-all-closed event triggered');
+  console.log('[DEBUG] Platform:', process.platform);
+  console.log('[DEBUG] Main window exists:', !!mainWindow);
+  console.log('[DEBUG] Main window destroyed:', mainWindow ? mainWindow.isDestroyed() : 'N/A');
+  console.log('[DEBUG] Recording overlay exists:', !!recordingOverlay);
+  console.log('[DEBUG] Spotlight window exists:', !!spotlightWindow);
+  console.log('[DEBUG] All windows count:', BrowserWindow.getAllWindows().length);
+
+  // IMPORTANT: Never quit the app automatically
+  // This prevents app from closing when overlay/spotlight windows close
+  // User must explicitly quit via menu (Cmd+Q on Mac, Alt+F4 on Windows)
+
+  // Only quit if main window was explicitly closed by user
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    console.log('[DEBUG] Main window closed - but keeping app alive for global shortcuts');
+    // Even if main window is closed, keep app running for global shortcuts
+    // User can reopen via activate event or quit via Cmd+Q
+    if (process.platform !== 'darwin') {
+      // On Windows/Linux, we need to quit if main window is closed
+      // because there's no dock to reactivate the app
+      console.log('[DEBUG] Quitting app on Windows/Linux');
+      app.quit();
+    }
+  } else {
+    console.log('[DEBUG] NOT quitting - main window still exists');
   }
 });

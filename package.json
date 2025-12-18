@@ -1,8 +1,8 @@
 {
-  "name": "open-claude",
-  "productName": "Open Claude",
+  "name": "ff",
+  "productName": "FF",
   "version": "1.0.0",
-  "description": "Open Claude - A custom Claude client",
+  "description": "FF - A custom Claude client",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && pnpm run build:renderer",
@@ -13,8 +13,8 @@
     "dist": "pnpm run build && electron-builder"
   },
   "build": {
-    "appId": "com.openclaude.app",
-    "productName": "Open Claude",
+    "appId": "com.ff.app",
+    "productName": "FF",
     "directories": {
       "output": "release"
     },
@@ -25,6 +25,12 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns",
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "FF cần quyền truy cập microphone để ghi âm và chuyển đổi giọng nói thành văn bản",
+        "NSAppleEventsUsageDescription": "FF cần quyền để tự động dán văn bản đã chuyển đổi"
+      },
       "target": [
         {
           "target": "dmg",
@@ -35,7 +41,7 @@
       ]
     },
     "dmg": {
-      "title": "Open Claude",
+      "title": "FF",
       "icon": "build/icon.icns"
     },
     "win": {

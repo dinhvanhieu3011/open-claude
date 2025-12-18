@@ -116,20 +116,27 @@
         
         mediaRecorder.onstop = async () => {
           try {
+            console.log('[Overlay] [DEBUG] MediaRecorder stopped, starting transcription');
             indicator.classList.add('transcribing');
             status.textContent = 'Transcribing...';
-            
+
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
             const arrayBuffer = await audioBlob.arrayBuffer();
-            
+
+            console.log('[Overlay] [DEBUG] Calling global-recording-complete');
             // Send to main process for transcription
             const result = await window.claude.invoke('global-recording-complete', arrayBuffer, 'audio.webm');
-            
+
+            console.log('[Overlay] [DEBUG] Transcription complete, result:', result.text);
             status.textContent = 'Done!';
             console.log('[Overlay] Transcription:', result.text);
-            
+
+            console.log('[Overlay] [DEBUG] Stopping audio tracks');
             // Stop all tracks
             stream.getTracks().forEach(track => track.stop());
+
+            console.log('[Overlay] [DEBUG] Waiting for overlay to close by main process');
+            // Note: overlay will be closed by main process after 800ms
           } catch (error) {
             console.error('[Overlay] Error:', error);
             status.textContent = 'Error!';

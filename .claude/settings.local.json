@@ -12,7 +12,12 @@
       "Bash(dir node_modules.binelectron*)",
       "Bash(./node_modules/.bin/electron .)",
       "Bash(npm run build:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(pnpm run dist:*)",
+      "Bash(npm run package:*)",
+      "Bash(npm run:*)",
+      "Bash(md5:*)",
+      "Bash(npm run dist:*)"
     ]
   }
 }
