@@ -1942,45 +1942,195 @@ function updateFlowStats() {
   }
 }
 
-function renderTranscriptionHistory() {
+async function renderTranscriptionHistory() {
   const container = $('list-history');
   if (!container) return;
 
   try {
-    const historyJson = localStorage.getItem('transcriptionHistory');
-    if (!historyJson) {
+    // Get recordings from database
+    const recordings = await (window as any).claude.getRecordingsList(10, 0);
+
+    if (!recordings || recordings.length === 0) {
       container.innerHTML = `
-        <div class="flow-activity-header">Recent Activity</div>
+        <div class="flow-activity-header">Recent Recordings</div>
         <div class="flow-activity-list">
-          <div class="flow-activity-item" style="justify-content:center; color:#999; padding: 20px;">No history yet</div>
+          <div class="flow-activity-item" style="justify-content:center; color:#999; padding: 20px;">No recordings yet</div>
         </div>
       `;
       return;
     }
 
-    const history: TranscriptionItem[] = JSON.parse(historyJson);
-    const top10 = history.slice(0, 10);
+    const itemsHtml = recordings.map((recording: any) => {
+      const date = new Date(recording.timestamp);
+      const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
 
-    const itemsHtml = top10.map(item => {
-      const date = new Date(item.timestamp);
-      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // Format duration
+      const minutes = Math.floor(recording.duration / 60);
+      const seconds = recording.duration % 60;
+      const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+      // Get preview of transcript (first 100 chars)
+      const preview = recording.title || `Recording ${dateStr}`;
+
+      // Mode badge
+      const modeBadge = recording.recordingMode === 'mic+system'
+        ? '<span class="recording-mode-badge system">Mic + System</span>'
+        : '<span class="recording-mode-badge">Mic</span>';
+
       return `
-        <div class="flow-activity-item">
-          <div class="flow-activity-time">${timeStr}</div>
-          <div class="flow-activity-text">${escapeHtml(item.text)}</div>
+        <div class="recording-item" data-id="${recording.id}">
+          <div class="recording-item-header">
+            <div class="recording-item-title">${escapeHtml(preview)}</div>
+            <div class="recording-item-actions">
+              <button class="recording-action-btn view-btn" data-id="${recording.id}" title="View transcript">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 3C4.5 3 1.73 5.61 1 9c.73 3.39 3.5 6 7 6s6.27-2.61 7-6c-.73-3.39-3.5-6-7-6zm0 10c-2.48 0-4.5-2.02-4.5-4.5S5.52 4 8 4s4.5 2.02 4.5 4.5S10.48 13 8 13z"/>
+                  <circle cx="8" cy="8.5" r="2"/>
+                </svg>
+              </button>
+              <button class="recording-action-btn delete-btn" data-id="${recording.id}" title="Delete">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M5 3V1.5A1.5 1.5 0 016.5 0h3A1.5 1.5 0 0111 1.5V3h3.5a.5.5 0 010 1H14v10.5A1.5 1.5 0 0112.5 16h-9A1.5 1.5 0 012 14.5V4h-.5a.5.5 0 010-1H5zM6 3h4V1.5a.5.5 0 00-.5-.5h-3a.5.5 0 00-.5.5V3zm7 1H3v10.5a.5.5 0 00.5.5h9a.5.5 0 00.5-.5V4z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="recording-item-meta">
+            <span class="recording-meta-time">${timeStr} · ${dateStr}</span>
+            <span class="recording-meta-duration">${durationStr}</span>
+            ${modeBadge}
+            <span class="recording-meta-words">${recording.wordCount || 0} words</span>
+          </div>
         </div>
       `;
     }).join('');
 
     container.innerHTML = `
-      <div class="flow-activity-header">Recent Activity</div>
-      <div class="flow-activity-list">
+      <div class="flow-activity-header">Recent Recordings</div>
+      <div class="recordings-list">
         ${itemsHtml}
       </div>
     `;
+
+    // Attach event listeners
+    attachRecordingEventListeners();
   } catch (e) {
-    console.error('Failed to render transcription history:', e);
+    console.error('Failed to render recordings:', e);
+    container.innerHTML = `
+      <div class="flow-activity-header">Recent Recordings</div>
+      <div class="flow-activity-list">
+        <div class="flow-activity-item" style="justify-content:center; color:#ff453a; padding: 20px;">Error loading recordings</div>
+      </div>
+    `;
   }
+}
+
+// Attach event listeners for recording items
+function attachRecordingEventListeners() {
+  // View buttons
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+      if (id) {
+        await viewRecording(id);
+      }
+    });
+  });
+
+  // Delete buttons
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+      if (id) {
+        if (confirm('Are you sure you want to delete this recording?')) {
+          await deleteRecording(id);
+        }
+      }
+    });
+  });
+}
+
+// View recording in modal
+async function viewRecording(id: string) {
+  try {
+    const detail = await (window as any).claude.getRecordingDetail(id);
+    if (!detail) {
+      alert('Recording not found');
+      return;
+    }
+
+    // Show modal with transcript
+    const modal = document.createElement('div');
+    modal.className = 'recording-modal-overlay active';
+
+    const date = new Date(detail.metadata.timestamp);
+    const dateStr = date.toLocaleString('vi-VN');
+    const minutes = Math.floor(detail.metadata.duration / 60);
+    const seconds = detail.metadata.duration % 60;
+    const durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    modal.innerHTML = `
+      <div class="recording-modal">
+        <div class="recording-modal-header">
+          <h2>${escapeHtml(detail.metadata.title || 'Recording')}</h2>
+          <button class="recording-modal-close">&times;</button>
+        </div>
+        <div class="recording-modal-meta">
+          <span>${dateStr}</span>
+          <span>·</span>
+          <span>${durationStr}</span>
+          <span>·</span>
+          <span>${detail.metadata.recordingMode === 'mic+system' ? 'Mic + System' : 'Mic Only'}</span>
+          <span>·</span>
+          <span>${detail.metadata.wordCount || 0} words</span>
+        </div>
+        <div class="recording-modal-content">
+          <pre>${escapeHtml(detail.transcript)}</pre>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close button
+    modal.querySelector('.recording-modal-close')?.addEventListener('click', () => {
+      modal.classList.remove('active');
+      setTimeout(() => modal.remove(), 300);
+    });
+
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to view recording:', error);
+    alert('Failed to load recording');
+  }
+}
+
+// Delete recording
+async function deleteRecording(id: string) {
+  try {
+    await (window as any).claude.deleteRecording(id);
+    renderTranscriptionHistory(); // Refresh list
+  } catch (error) {
+    console.error('Failed to delete recording:', error);
+    alert('Failed to delete recording');
+  }
+}
+
+// Listen for recording-saved event
+if ((window as any).claude && (window as any).claude.onRecordingSaved) {
+  (window as any).claude.onRecordingSaved(() => {
+    console.log('[Renderer] Recording saved, refreshing list');
+    renderTranscriptionHistory();
+  });
 }
 
 async function toggleRecording() {
@@ -2144,12 +2294,14 @@ function showNotesPage() {
   const homeContent = $('home-content');
   const notesContent = $('notes-content');
   const dictionaryContent = $('dictionary-content');
+  const recordingsContent = $('recordings-content');
   const settingsContent = $('settings-content');
   const textarea = $('notes-textarea') as HTMLTextAreaElement;
 
   if (homeContent) homeContent.style.display = 'none';
   if (notesContent) notesContent.style.display = 'flex';
   if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (recordingsContent) recordingsContent.style.display = 'none';
   if (settingsContent) settingsContent.style.display = 'none';
   if (textarea) {
     textarea.value = '';
@@ -2190,16 +2342,59 @@ function showDictionaryPage() {
   if (viewDictionaryBtn) viewDictionaryBtn.classList.add('active');
 }
 
+function showRecordingsPage() {
+  const homeContent = $('home-content');
+  const notesContent = $('notes-content');
+  const dictionaryContent = $('dictionary-content');
+  const recordingsContent = $('recordings-content');
+  const settingsContent = $('settings-content');
+
+  if (homeContent) homeContent.style.display = 'none';
+  if (notesContent) notesContent.style.display = 'none';
+  if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (recordingsContent) recordingsContent.style.display = 'flex';
+  if (settingsContent) settingsContent.style.display = 'none';
+
+  // Update active state in sidebar
+  const viewRecordingsBtn = $('view-recordings-btn');
+  const navItems = document.querySelectorAll('.flow-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  if (viewRecordingsBtn) viewRecordingsBtn.classList.add('active');
+
+  // Render recordings list immediately
+  renderRecordingsList();
+}
+
+function renderRecordingsList() {
+  const recordingsListContent = $('recordings-list-content');
+  if (!recordingsListContent) return;
+
+  // TODO: Implement actual recordings loading from storage
+  // For now, show empty state
+  recordingsListContent.innerHTML = `
+    <div class="recordings-empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <p>No recordings yet</p>
+      <p style="font-size: 13px; opacity: 0.6;">Press ⌘+K to start recording</p>
+    </div>
+  `;
+}
+
 function showHomePage() {
   const homeContent = $('home-content');
   const notesContent = $('notes-content');
   const dictionaryContent = $('dictionary-content');
+  const recordingsContent = $('recordings-content');
   const settingsContent = $('settings-content');
   const recordBtn = $('notes-record-btn');
 
   if (homeContent) homeContent.style.display = 'block';
   if (notesContent) notesContent.style.display = 'none';
   if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (recordingsContent) recordingsContent.style.display = 'none';
   if (settingsContent) settingsContent.style.display = 'none';
   if (recordBtn) recordBtn.classList.remove('recording');
 
@@ -2220,12 +2415,14 @@ function showSettingsPage() {
   const homeContent = $('home-content');
   const notesContent = $('notes-content');
   const dictionaryContent = $('dictionary-content');
+  const recordingsContent = $('recordings-content');
   const settingsContent = $('settings-content');
   const recordBtn = $('notes-record-btn');
 
   if (homeContent) homeContent.style.display = 'none';
   if (notesContent) notesContent.style.display = 'none';
   if (dictionaryContent) dictionaryContent.style.display = 'none';
+  if (recordingsContent) recordingsContent.style.display = 'none';
   if (settingsContent) settingsContent.style.display = 'flex';
   if (recordBtn) recordBtn.classList.remove('recording');
 
@@ -2916,6 +3113,15 @@ function setupNotesEventListeners() {
     showNotesPage();
   });
 
+  // View Recordings button in home page sidebar
+  const viewRecordingsBtn = $('view-recordings-btn');
+  console.log('View Recordings button:', viewRecordingsBtn);
+  viewRecordingsBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log('View Recordings button clicked!');
+    showRecordingsPage();
+  });
+
   // Handle click on first nav item (Home)
   const navItems = document.querySelectorAll('.flow-nav-item');
   if (navItems.length > 0) {
@@ -2929,10 +3135,16 @@ function setupNotesEventListeners() {
   $('notes-refresh-btn')?.addEventListener('click', () => {
     renderNotesList();
   });
+
+  // Recordings refresh button
+  $('recordings-refresh-btn')?.addEventListener('click', () => {
+    renderRecordingsList();
+  });
 }
 
 // Make functions globally accessible for navigation
 (window as any).showNotesPage = showNotesPage;
+(window as any).showRecordingsPage = showRecordingsPage;
 (window as any).showHomePage = showHomePage;
 (window as any).showSettingsPage = showSettingsPage;
 

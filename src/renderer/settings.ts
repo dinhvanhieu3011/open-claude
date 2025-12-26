@@ -344,5 +344,110 @@ llmCorrectionToggle.addEventListener('change', () => {
 });
 llmPromptInput.addEventListener('input', saveTranscriptionSettings);
 
+// Recording settings
+const recordingModeSelect = document.getElementById('recording-mode-select') as HTMLSelectElement;
+const transcriptFormatSelect = document.getElementById('transcript-format-select') as HTMLSelectElement;
+const recordingModeStatus = document.getElementById('recording-mode-status') as HTMLElement;
+const screenRecordingStatus = document.getElementById('screen-recording-status') as HTMLElement;
+const requestPermissionBtn = document.getElementById('request-permission-btn') as HTMLButtonElement;
+const storageStatsText = document.getElementById('storage-stats-text') as HTMLElement;
+
+// Load recording settings
+async function loadRecordingSettings() {
+  try {
+    const settings = await claude.getRecordingSettings();
+    if (settings) {
+      recordingModeSelect.value = settings.mode;
+      transcriptFormatSelect.value = settings.format;
+    }
+
+    // Check system audio capability
+    const canCaptureSystem = await claude.canCaptureSystemAudio();
+    if (!canCaptureSystem) {
+      // Disable mic+system option
+      const systemOption = recordingModeSelect.querySelector('option[value="mic+system"]') as HTMLOptionElement;
+      if (systemOption) {
+        systemOption.disabled = true;
+        systemOption.textContent = 'Microphone + System Audio (macOS 13.2+ required)';
+      }
+      if (recordingModeSelect.value === 'mic+system') {
+        recordingModeSelect.value = 'mic';
+        await saveRecordingSettings({ mode: 'mic' });
+      }
+      recordingModeStatus.textContent = 'System audio unavailable (macOS 13.2+ required)';
+      recordingModeStatus.className = 'setting-status warning';
+    } else {
+      recordingModeStatus.textContent = '';
+    }
+
+    // Check screen recording permission
+    const hasPermission = await claude.checkScreenRecordingPermission();
+    if (hasPermission) {
+      screenRecordingStatus.textContent = 'Granted';
+      screenRecordingStatus.className = 'setting-status success';
+      requestPermissionBtn.style.display = 'none';
+    } else {
+      screenRecordingStatus.textContent = 'Not granted';
+      screenRecordingStatus.className = 'setting-status error';
+      requestPermissionBtn.style.display = 'block';
+    }
+
+    // Load storage stats
+    const stats = await claude.getRecordingsStats();
+    const totalMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
+    storageStatsText.textContent = `${stats.totalRecordings} recordings, ${totalMB} MB used`;
+  } catch (error) {
+    console.error('Failed to load recording settings:', error);
+  }
+}
+
+// Save recording settings
+async function saveRecordingSettings(updates: { mode?: 'mic' | 'mic+system'; format?: 'txt' | 'json' | 'md'; autoSave?: boolean }) {
+  try {
+    await claude.updateRecordingSettings(updates);
+  } catch (error) {
+    console.error('Failed to save recording settings:', error);
+  }
+}
+
+// Recording mode change
+recordingModeSelect.addEventListener('change', async () => {
+  const mode = recordingModeSelect.value as 'mic' | 'mic+system';
+  await saveRecordingSettings({ mode });
+
+  if (mode === 'mic+system') {
+    // Check permission again
+    const hasPermission = await claude.checkScreenRecordingPermission();
+    if (!hasPermission) {
+      alert('Screen Recording permission is required for system audio capture. Please grant permission in System Settings.');
+    }
+  }
+});
+
+// Transcript format change
+transcriptFormatSelect.addEventListener('change', async () => {
+  const format = transcriptFormatSelect.value as 'txt' | 'json' | 'md';
+  await saveRecordingSettings({ format });
+});
+
+// Request permission button
+requestPermissionBtn.addEventListener('click', async () => {
+  try {
+    const granted = await claude.requestScreenRecordingPermission();
+    if (granted) {
+      screenRecordingStatus.textContent = 'Granted';
+      screenRecordingStatus.className = 'setting-status success';
+      requestPermissionBtn.style.display = 'none';
+    } else {
+      alert('Please grant Screen Recording permission in System Settings > Privacy & Security > Screen Recording');
+    }
+  } catch (error) {
+    console.error('Failed to request permission:', error);
+  }
+});
+
 // Load settings on page load
-window.addEventListener('load', loadSettings);
+window.addEventListener('load', () => {
+  loadSettings();
+  loadRecordingSettings();
+});

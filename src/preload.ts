@@ -15,6 +15,36 @@ contextBridge.exposeInMainWorld('claude', {
   // Pre-warm bearer token for faster transcription
   warmBearerToken: () => ipcRenderer.invoke('warm-bearer-token'),
 
+  // Chunked transcription for call recording
+  transcribeChunk: (audioData: ArrayBuffer, chunkIndex: number) => ipcRenderer.invoke('transcribe-chunk', audioData, chunkIndex),
+  callRecordingComplete: (fullTranscript: string, recordingMode: 'mic' | 'mic+system', duration: number, chunksCount: number) =>
+    ipcRenderer.invoke('call-recording-complete', fullTranscript, recordingMode, duration, chunksCount),
+  onChunkTranscribed: (callback: (event: unknown, result: { text: string; chunkIndex: number }) => void) => {
+    ipcRenderer.on('chunk-transcribed', callback);
+  },
+
+  // Recording management
+  getRecordingsList: (limit?: number, offset?: number) => ipcRenderer.invoke('get-recordings-list', limit, offset),
+  getRecordingDetail: (id: string) => ipcRenderer.invoke('get-recording-detail', id),
+  updateRecordingTitle: (id: string, title: string) => ipcRenderer.invoke('update-recording-title', id, title),
+  deleteRecording: (id: string) => ipcRenderer.invoke('delete-recording', id),
+  getRecordingsStats: () => ipcRenderer.invoke('get-recordings-stats'),
+
+  // Permissions
+  checkScreenRecordingPermission: () => ipcRenderer.invoke('check-screen-recording-permission'),
+  requestScreenRecordingPermission: () => ipcRenderer.invoke('request-screen-recording-permission'),
+  canCaptureSystemAudio: () => ipcRenderer.invoke('can-capture-system-audio'),
+
+  // Recording settings
+  getRecordingSettings: () => ipcRenderer.invoke('get-recording-settings'),
+  updateRecordingSettings: (settings: { mode?: 'mic' | 'mic+system'; format?: 'txt' | 'json' | 'md'; autoSave?: boolean }) =>
+    ipcRenderer.invoke('update-recording-settings', settings),
+
+  // Recording saved event
+  onRecordingSaved: (callback: (event: unknown, metadata: unknown) => void) => {
+    ipcRenderer.on('recording-saved', callback);
+  },
+
   // Stream listeners
   onMessageStream: (callback: (data: { conversationId: string; text: string; fullText: string }) => void) => {
     ipcRenderer.on('message-stream', (_event, data) => callback(data));

@@ -17,7 +17,17 @@
       "Bash(npm run package:*)",
       "Bash(npm run:*)",
       "Bash(md5:*)",
-      "Bash(npm run dist:*)"
+      "Bash(npm run dist:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm start)",
+      "Bash(npm run start:*)",
+      "Bash(npx electron .)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm add:*)",
+      "Bash(node:*)",
+      "Bash(pnpm why:*)",
+      "Bash(./node_modules/.pnpm/electron@39.2.7/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron:*)"
     ]
   }
 }

@@ -6,7 +6,7 @@
   <title>Recording</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     body {
       width: 100vw;
       height: 100vh;
@@ -16,19 +16,34 @@
       background: transparent;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    
-    .recording-indicator {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 24px;
-      background: rgba(0, 0, 0, 0.85);
+
+    .recording-container {
+      width: 400px;
+      min-height: 200px;
+      max-height: 400px;
+      background: rgba(0, 0, 0, 0.9);
       backdrop-filter: blur(20px);
       border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .recording-dot {
       width: 12px;
       height: 12px;
@@ -37,28 +52,75 @@
       animation: pulse 1.5s ease-in-out infinite;
       box-shadow: 0 0 12px rgba(255, 69, 58, 0.8);
     }
-    
+
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.6; transform: scale(1.2); }
     }
-    
+
     .recording-text {
       color: white;
       font-size: 14px;
       font-weight: 600;
       letter-spacing: 0.5px;
     }
-    
-    .transcribing {
-      background: rgba(204, 120, 92, 0.85);
+
+    .mode-badge {
+      background: rgba(52, 199, 89, 0.2);
+      color: #34C759;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
     }
-    
+
+    .timer {
+      font-size: 14px;
+      color: #888;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .live-transcript {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.5;
+      max-height: 300px;
+      min-height: 100px;
+    }
+
+    .live-transcript::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .live-transcript::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .live-transcript::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .live-transcript::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .placeholder {
+      color: #888;
+      font-style: italic;
+    }
+
     .transcribing .recording-dot {
       background: #FFA500;
       animation: spin 1s linear infinite;
     }
-    
+
     @keyframes spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
@@ -66,109 +128,221 @@
   </style>
 </head>
 <body>
-  <div class="recording-indicator" id="indicator">
-    <div class="recording-dot"></div>
-    <div class="recording-text" id="status">Recording...</div>
+  <div class="recording-container" id="container">
+    <div class="header">
+      <div class="status">
+        <div class="recording-dot"></div>
+        <span class="recording-text" id="status">Recording</span>
+        <span class="mode-badge" id="mode-badge">Mic Only</span>
+      </div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+
+    <div class="live-transcript" id="live-transcript">
+      <span class="placeholder">Waiting for audio...</span>
+    </div>
   </div>
   
   <script>
-    const indicator = document.getElementById('indicator');
+    const container = document.getElementById('container');
     const status = document.getElementById('status');
-    
+    const modeBadge = document.getElementById('mode-badge');
+    const timerEl = document.getElementById('timer');
+    const liveTranscriptEl = document.getElementById('live-transcript');
+
     let mediaRecorder = null;
-    let audioChunks = [];
+    let audioStream = null;
     let isRecording = false;
-    
+    let chunkIndex = 0;
+    let partialTranscripts = [];
+    let recordingStartTime = null;
+    let timerInterval = null;
+    let recordingMode = 'mic';
+
     // Start recording when window loads
     async function startRecording() {
       try {
-        // Pre-warm bearer token for faster transcription (fire-and-forget)
+        console.log('[Overlay] Starting recording...');
+
+        // Pre-warm bearer token for faster transcription
         if (window.claude && window.claude.warmBearerToken) {
-          window.claude.warmBearerToken().catch(() => {
-            // Ignore errors - transcription will fetch token if needed
-          });
+          window.claude.warmBearerToken().catch(() => {});
         }
 
-        // Request high-quality audio with optimized constraints
-        const stream = await navigator.mediaDevices.getUserMedia({
+        // Get recording settings
+        const settings = await window.claude.getRecordingSettings();
+        recordingMode = settings.mode;
+
+        console.log('[Overlay] Recording mode:', recordingMode);
+
+        // Get audio stream based on recording mode
+        if (recordingMode === 'mic+system') {
+          // Check if system audio is available
+          const canCaptureSystem = await window.claude.canCaptureSystemAudio();
+          if (!canCaptureSystem) {
+            console.warn('[Overlay] System audio not available, falling back to mic-only');
+            recordingMode = 'mic';
+          }
+        }
+
+        // Update UI based on mode
+        if (recordingMode === 'mic+system') {
+          modeBadge.textContent = 'Mic + System';
+          modeBadge.style.background = 'rgba(52, 199, 89, 0.2)';
+          modeBadge.style.color = '#34C759';
+        } else {
+          modeBadge.textContent = 'Mic Only';
+          modeBadge.style.background = 'rgba(100, 100, 100, 0.2)';
+          modeBadge.style.color = '#888';
+        }
+
+        // Get audio stream (will be implemented with audio mixer later)
+        // For now, use microphone only
+        audioStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-            sampleRate: 48000,  // Higher sample rate for better quality
-            channelCount: 1     // Mono is sufficient for speech
+            sampleRate: 48000,
+            channelCount: 1
           }
         });
 
-        // Use high-quality encoding settings
-        mediaRecorder = new MediaRecorder(stream, {
+        // Create MediaRecorder with chunked recording
+        mediaRecorder = new MediaRecorder(audioStream, {
           mimeType: 'audio/webm;codecs=opus',
-          audioBitsPerSecond: 128000  // 128kbps for high quality speech
+          audioBitsPerSecond: 128000
         });
-        
-        audioChunks = [];
-        
-        mediaRecorder.ondataavailable = (event) => {
+
+        // Handle chunk every 30 seconds
+        mediaRecorder.ondataavailable = async (event) => {
           if (event.data.size > 0) {
-            audioChunks.push(event.data);
+            const audioBlob = event.data;
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const currentChunkIndex = chunkIndex++;
+
+            console.log(`[Overlay] [Chunk ${currentChunkIndex}] Sending for transcription, size: ${audioBlob.size} bytes`);
+
+            // Send chunk to main process for transcription (non-blocking)
+            window.claude.transcribeChunk(arrayBuffer, currentChunkIndex)
+              .catch(error => {
+                console.error(`[Overlay] [Chunk ${currentChunkIndex}] Error:`, error);
+              });
           }
         };
-        
+
+        // Handle stop event
         mediaRecorder.onstop = async () => {
           try {
-            console.log('[Overlay] [DEBUG] MediaRecorder stopped, starting transcription');
-            indicator.classList.add('transcribing');
-            status.textContent = 'Transcribing...';
+            console.log('[Overlay] Recording stopped, finalizing...');
+            container.classList.add('transcribing');
+            status.textContent = 'Finalizing...';
 
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
-            const arrayBuffer = await audioBlob.arrayBuffer();
+            // Wait a bit for any pending chunks to complete
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            console.log('[Overlay] [DEBUG] Calling global-recording-complete');
-            // Send to main process for transcription
-            const result = await window.claude.invoke('global-recording-complete', arrayBuffer, 'audio.webm');
+            // Merge all partial transcripts
+            const fullTranscript = partialTranscripts.filter(Boolean).join(' ').trim();
+            const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
 
-            console.log('[Overlay] [DEBUG] Transcription complete, result:', result.text);
-            status.textContent = 'Done!';
-            console.log('[Overlay] Transcription:', result.text);
+            console.log(`[Overlay] Full transcript: ${fullTranscript.length} chars, ${duration}s, ${partialTranscripts.length} chunks`);
 
-            console.log('[Overlay] [DEBUG] Stopping audio tracks');
-            // Stop all tracks
-            stream.getTracks().forEach(track => track.stop());
+            // Save to storage
+            if (fullTranscript) {
+              await window.claude.callRecordingComplete(
+                fullTranscript,
+                recordingMode,
+                duration,
+                partialTranscripts.length
+              );
+              status.textContent = 'Saved!';
+            } else {
+              status.textContent = 'No audio detected';
+            }
 
-            console.log('[Overlay] [DEBUG] Waiting for overlay to close by main process');
-            // Note: overlay will be closed by main process after 800ms
+            // Cleanup
+            if (audioStream) {
+              audioStream.getTracks().forEach(track => track.stop());
+            }
+            if (timerInterval) {
+              clearInterval(timerInterval);
+            }
+
+            // Overlay will be closed by main process
           } catch (error) {
-            console.error('[Overlay] Error:', error);
+            console.error('[Overlay] Error finalizing:', error);
             status.textContent = 'Error!';
-            stream.getTracks().forEach(track => track.stop());
+            if (audioStream) {
+              audioStream.getTracks().forEach(track => track.stop());
+            }
           }
         };
-        
-        mediaRecorder.start();
+
+        // Start recording with 30-second chunks
+        mediaRecorder.start(30000);
         isRecording = true;
-        console.log('[Overlay] Recording started');
+        recordingStartTime = Date.now();
+        startTimer();
+
+        console.log('[Overlay] Recording started with 30s chunks');
       } catch (error) {
         console.error('[Overlay] Failed to start recording:', error);
         status.textContent = 'Error!';
+        liveTranscriptEl.innerHTML = `<span class="placeholder" style="color: #FF453A;">Failed to start: ${error.message}</span>`;
       }
     }
-    
+
+    // Update live transcript display
+    function updateLiveTranscript() {
+      const text = partialTranscripts.filter(Boolean).join(' ').trim();
+      if (text) {
+        liveTranscriptEl.textContent = text;
+        // Auto-scroll to bottom
+        liveTranscriptEl.scrollTop = liveTranscriptEl.scrollHeight;
+      }
+    }
+
+    // Start timer
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    // Stop recording
     function stopRecording() {
       if (mediaRecorder && isRecording) {
         mediaRecorder.stop();
         isRecording = false;
-        console.log('[Overlay] Recording stopped');
+        console.log('[Overlay] Stopping recording...');
       }
     }
-    
-    // Listen for IPC messages
+
+    // Listen for chunk transcription results
+    if (window.claude && window.claude.onChunkTranscribed) {
+      window.claude.onChunkTranscribed((event, result) => {
+        const { text, chunkIndex: idx } = result;
+        console.log(`[Overlay] [Chunk ${idx}] Transcribed: "${text}"`);
+
+        // Store partial transcript
+        partialTranscripts[idx] = text;
+
+        // Update UI
+        updateLiveTranscript();
+      });
+    }
+
+    // Listen for stop command
     if (window.claude && window.claude.receive) {
       window.claude.receive('stop-recording', () => {
         console.log('[Overlay] Received stop-recording command');
         stopRecording();
       });
     }
-    
+
     // Start recording when page loads
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => startRecording(), 100);

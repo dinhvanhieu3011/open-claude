@@ -1,3 +1,23 @@
+// Recording metadata for call transcripts
+export interface RecordingMetadata {
+  id: string;                      // UUID
+  timestamp: string;                // ISO 8601
+  duration: number;                 // seconds
+  title?: string;                   // user-editable
+  transcriptPath: string;           // relative path to file
+  format: 'txt' | 'json' | 'md';    // file format
+  recordingMode: 'mic' | 'mic+system';
+  wordCount?: number;
+  fileSize: number;                 // bytes
+}
+
+// Recording settings
+export interface RecordingSettings {
+  mode: 'mic' | 'mic+system';
+  format: 'txt' | 'json' | 'md';
+  autoSave: boolean;
+}
+
 // Settings schema
 export interface SettingsSchema {
   spotlightKeybind: string;
@@ -6,6 +26,7 @@ export interface SettingsSchema {
   dictionary?: Record<string, string>;
   llmCorrectionEnabled?: boolean;
   llmCorrectionPrompt?: string;
+  recordingSettings?: RecordingSettings;
 }
 
 // Store schema for electron-store
@@ -14,6 +35,8 @@ export interface StoreSchema {
   deviceId?: string;
   anonymousId?: string;
   settings: SettingsSchema;
+  recordings?: RecordingMetadata[];
+  migrationCompleted?: boolean;
 }
 
 // File attachment payloads

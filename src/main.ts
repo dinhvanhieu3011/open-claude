@@ -5,8 +5,12 @@ import path from 'path';
 import crypto from 'crypto';
 import { isAuthenticated, getOrgId, makeRequest, store, BASE_URL, transcribeAudio, getBearerToken } from './api/client';
 import { createStreamState, processSSEChunk, type StreamCallbacks } from './streaming/parser';
-import type { SettingsSchema, AttachmentPayload, UploadFilePayload } from './types';
+import type { SettingsSchema, AttachmentPayload, UploadFilePayload, RecordingMetadata } from './types';
 import { audioDuckingManager } from './audio/ducking';
+import { initializeStore, addRecording, getRecording, listRecordings, updateRecording, deleteRecording, getRecordingsCount, getRecordingSettings, updateRecordingSettings } from './storage/database';
+import { saveTranscriptToFile, loadTranscript, deleteTranscript, getStorageStats, ensureRecordingsDirectory } from './storage/recordings';
+import { migrateTranscriptionHistory } from './storage/migration';
+import { hasScreenRecordingPermission, requestScreenRecordingPermission, canCaptureSystemAudio } from './audio/sources';
 
 // Setup file logging
 const logsDir = path.join(app.getPath('userData'), 'logs');
@@ -913,6 +917,196 @@ ipcMain.handle('audio-ducking-stop', async () => {
   await audioDuckingManager.stop();
 });
 
+// Chunked transcription IPC handler
+ipcMain.handle('transcribe-chunk', async (_event, audioData: ArrayBuffer, chunkIndex: number) => {
+  try {
+    console.log(`[Chunk ${chunkIndex}] Transcribing...`);
+    const buffer = Buffer.from(audioData);
+    const result = await transcribeAudio(buffer, `chunk-${chunkIndex}.webm`, 'auto');
+
+    // Send result back to overlay
+    if (recordingOverlay && !recordingOverlay.isDestroyed()) {
+      recordingOverlay.webContents.send('chunk-transcribed', {
+        text: result.text,
+        chunkIndex
+      });
+    }
+
+    console.log(`[Chunk ${chunkIndex}] Done: "${result.text.substring(0, 50)}..."`);
+    return result;
+  } catch (error) {
+    console.error(`[Chunk ${chunkIndex}] Error:`, error);
+    // Don't throw - allow recording to continue even if one chunk fails
+    return { text: '', chunkIndex };
+  }
+});
+
+// Call recording complete handler (for chunked recordings)
+ipcMain.handle('call-recording-complete', async (
+  _event,
+  fullTranscript: string,
+  recordingMode: 'mic' | 'mic+system',
+  duration: number,
+  chunksCount: number
+) => {
+  try {
+    console.log('[Call Recording] Processing...', { duration, chunksCount, wordCount: fullTranscript.split(/\s+/).length });
+
+    // Apply dictionary & LLM correction to full transcript
+    const settings = getSettings();
+    let finalTranscript = fullTranscript;
+
+    if (settings.dictionary) {
+      finalTranscript = applyDictionary(finalTranscript, settings.dictionary);
+    }
+
+    if (settings.llmCorrectionEnabled) {
+      const corrected = await applyLLMCorrection(finalTranscript, settings.llmCorrectionPrompt);
+      if (corrected && corrected !== finalTranscript) {
+        finalTranscript = corrected;
+      }
+    }
+
+    // Get recording settings
+    const recordingSettings = getRecordingSettings();
+
+    // Save to file & database
+    const metadata: RecordingMetadata = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      duration,
+      transcriptPath: '', // will be set by saveTranscriptToFile
+      format: recordingSettings.format,
+      recordingMode,
+      wordCount: finalTranscript.split(/\s+/).length,
+      fileSize: 0 // will be set after file save
+    };
+
+    await saveTranscriptToFile(metadata, finalTranscript);
+    addRecording(metadata);
+
+    // Notify main window
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recording-saved', metadata);
+    }
+
+    console.log(`[Call Recording] Saved: ${chunksCount} chunks, ${duration}s, ${metadata.wordCount} words`);
+    return { success: true, id: metadata.id };
+  } catch (error) {
+    console.error('[Call Recording] Save error:', error);
+    throw error;
+  }
+});
+
+// Recording management IPC handlers
+ipcMain.handle('get-recordings-list', async (_event, limit?: number, offset?: number) => {
+  try {
+    return listRecordings(limit, offset);
+  } catch (error) {
+    console.error('[IPC] Error getting recordings list:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('get-recording-detail', async (_event, id: string) => {
+  try {
+    const metadata = getRecording(id);
+    if (!metadata) {
+      return null;
+    }
+
+    const content = await loadTranscript(metadata);
+    return { metadata, content };
+  } catch (error) {
+    console.error('[IPC] Error getting recording detail:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('update-recording-title', async (_event, id: string, title: string) => {
+  try {
+    return updateRecording(id, { title });
+  } catch (error) {
+    console.error('[IPC] Error updating recording title:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('delete-recording', async (_event, id: string) => {
+  try {
+    const metadata = getRecording(id);
+    if (!metadata) {
+      return false;
+    }
+
+    await deleteTranscript(metadata);
+    return deleteRecording(id);
+  } catch (error) {
+    console.error('[IPC] Error deleting recording:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-recordings-stats', async () => {
+  try {
+    const count = getRecordingsCount();
+    const storage = getStorageStats();
+    return { count, ...storage };
+  } catch (error) {
+    console.error('[IPC] Error getting recordings stats:', error);
+    return { count: 0, totalFiles: 0, totalSize: 0 };
+  }
+});
+
+// Permission checking IPC handlers
+ipcMain.handle('check-screen-recording-permission', async () => {
+  try {
+    return hasScreenRecordingPermission();
+  } catch (error) {
+    console.error('[IPC] Error checking screen recording permission:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('request-screen-recording-permission', async () => {
+  try {
+    requestScreenRecordingPermission();
+    return true;
+  } catch (error) {
+    console.error('[IPC] Error requesting screen recording permission:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('can-capture-system-audio', async () => {
+  try {
+    return canCaptureSystemAudio();
+  } catch (error) {
+    console.error('[IPC] Error checking system audio capability:', error);
+    return { available: false, reason: 'Error checking capability' };
+  }
+});
+
+// Recording settings IPC handlers
+ipcMain.handle('get-recording-settings', async () => {
+  try {
+    return getRecordingSettings();
+  } catch (error) {
+    console.error('[IPC] Error getting recording settings:', error);
+    return { mode: 'mic', format: 'md', autoSave: true };
+  }
+});
+
+ipcMain.handle('update-recording-settings', async (_event, settings: any) => {
+  try {
+    updateRecordingSettings(settings);
+    return true;
+  } catch (error) {
+    console.error('[IPC] Error updating recording settings:', error);
+    return false;
+  }
+});
+
 // Pre-warm bearer token for faster transcription
 ipcMain.handle('warm-bearer-token', async () => {
   try {
@@ -977,10 +1171,24 @@ app.on('before-quit', (event) => {
   console.log('[DEBUG] Overlay exists:', !!recordingOverlay);
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('[DEBUG] App ready');
 
+  // Initialize storage modules
+  initializeStore(store);
+  ensureRecordingsDirectory();
+  console.log('[Storage] Initialized');
+
   createMainWindow();
+
+  // Run migration after main window is created
+  try {
+    if (mainWindow) {
+      await migrateTranscriptionHistory(mainWindow);
+    }
+  } catch (error) {
+    console.error('[Migration] Failed:', error);
+  }
 
   // Register global shortcuts
   registerGlobalShortcuts();

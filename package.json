@@ -29,7 +29,8 @@
       "entitlementsInherit": "entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "FF cần quyền truy cập microphone để ghi âm và chuyển đổi giọng nói thành văn bản",
-        "NSAppleEventsUsageDescription": "FF cần quyền để tự động dán văn bản đã chuyển đổi"
+        "NSAppleEventsUsageDescription": "FF cần quyền để tự động dán văn bản đã chuyển đổi",
+        "NSScreenRecordingUsageDescription": "FF cần quyền Screen Recording để ghi âm system audio (cuộc gọi Zoom/Teams/etc)"
       },
       "target": [
         {
@@ -66,11 +67,12 @@
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
     "electron-store": "^11.0.2",
-    "loudness": "^0.4.2"
+    "loudness": "^0.4.2",
+    "mac-screen-capture-permissions": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "electron": "^39.2.6",
+    "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.27.1",
     "typescript": "^5.9.3"
